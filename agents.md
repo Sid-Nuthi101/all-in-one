@@ -1,0 +1,1 @@
+Read projects/unitTests.md for information on how to setup and run unit tests
