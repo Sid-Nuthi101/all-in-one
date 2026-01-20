@@ -102,6 +102,7 @@ class MainWindow(QWidget):
       QWidget#rightHeader {
         background-color: rgba(255, 255, 255, 0.08);
         border-radius: 12px;
+        padding: 8px 12px;
       }
       QLabel#chatName {
         color: #ffffff;
