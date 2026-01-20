@@ -66,13 +66,13 @@ class MainWindow(QWidget):
     right_container = QWidget()
     right_container.setObjectName("blackPanel")
     right_layout = QVBoxLayout(right_container)
-    right_layout.setContentsMargins(16, 16, 16, 16)
-    right_layout.setSpacing(12)
+    right_layout.setContentsMargins(0, 0, 0, 0)
+    right_layout.setSpacing(0)
 
     right_header = QWidget()
     right_header.setObjectName("rightHeader")
     header_layout = QHBoxLayout(right_header)
-    header_layout.setContentsMargins(12, 8, 12, 8)
+    header_layout.setContentsMargins(0, 0, 0, 0)
     header_layout.setSpacing(8)
 
     name_label = QLabel("Alex Morgan")
