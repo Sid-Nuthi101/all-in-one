@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import QEvent, QObject, Qt
+from PySide6.QtCore import QEvent, QObject, QPointer, Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QGraphicsDropShadowEffect, QWidget
+from shiboken6 import isValid
 
 from .glass_panel import GlassPanel
 from .tokens import COLORS, EFFECTS, RADII, SHADOWS, SPACING, TYPOGRAPHY
@@ -64,7 +65,7 @@ def _color_to_hex_alpha(value: str) -> tuple[str, float]:
   return color.name(), color.alphaF()
 
 
-def _glass_tint_from_color(value: str, *, lighten: int = 118, alpha_scale: float = 0.55) -> tuple[str, float]:
+def _glass_tint_from_color(value: str, *, lighten: int = 135, alpha_scale: float = 0.35) -> tuple[str, float]:
   color = QColor(value)
   color = color.lighter(lighten)
   return color.name(), max(0.0, min(1.0, color.alphaF() * alpha_scale))
@@ -73,16 +74,21 @@ def _glass_tint_from_color(value: str, *, lighten: int = 118, alpha_scale: float
 class _GlassOverlayBinder(QObject):
   def __init__(self, widget: QWidget, overlay: GlassPanel):
     super().__init__(widget)
-    self.widget = widget
+    self.widget = QPointer(widget)
     self.overlay = overlay
+    self.parent = QPointer(widget.parentWidget()) if widget.parentWidget() is not None else QPointer()
     widget.installEventFilter(self)
-    if widget.parentWidget() is not None:
-      widget.parentWidget().installEventFilter(self)
+    if self.parent:
+      self.parent.installEventFilter(self)
+    widget.destroyed.connect(self._on_widget_destroyed)
     self.sync()
 
   def eventFilter(self, obj, event):
+    widget = self.widget
+    if not isValid(widget):
+      return False
     t = event.type()
-    if obj is self.widget and t in (
+    if obj is widget and t in (
       QEvent.Type.Move,
       QEvent.Type.Resize,
       QEvent.Type.Show,
@@ -90,27 +96,42 @@ class _GlassOverlayBinder(QObject):
       QEvent.Type.ParentChange,
     ):
       self.sync()
-    elif obj is self.widget.parentWidget() and t in (
+    elif isValid(self.parent) and obj is self.parent and t in (
       QEvent.Type.Resize,
       QEvent.Type.Move,
     ):
       self.sync()
     return super().eventFilter(obj, event)
 
+  def _on_widget_destroyed(self) -> None:
+    self.overlay.hide()
+    self.overlay.set_capture_parent(None)
+    self.overlay.setParent(None)
+
   def sync(self) -> None:
-    parent = self.widget.parentWidget()
+    widget = self.widget
+    if not isValid(widget):
+      self.overlay.hide()
+      self.overlay.set_capture_parent(None)
+      self.overlay.setParent(None)
+      return
+    parent = widget.parentWidget()
     if parent is None:
       self.overlay.hide()
       self.overlay.set_capture_parent(None)
       self.overlay.setParent(None)
       return
+    if not isValid(self.parent) or self.parent is not parent:
+      if isValid(self.parent):
+        self.parent.removeEventFilter(self)
+      self.parent = QPointer(parent)
+      self.parent.installEventFilter(self)
     if self.overlay.parentWidget() is not parent:
       self.overlay.setParent(parent)
       self.overlay.set_capture_parent(parent)
-      parent.installEventFilter(self)
-    self.overlay.setGeometry(self.widget.geometry())
-    self.overlay.stackUnder(self.widget)
-    if self.widget.isVisible():
+    self.overlay.setGeometry(widget.geometry())
+    self.overlay.stackUnder(widget)
+    if widget.isVisible():
       self.overlay.show()
       self.overlay.schedule_capture()
     else:
