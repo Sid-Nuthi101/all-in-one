@@ -64,6 +64,12 @@ def _color_to_hex_alpha(value: str) -> tuple[str, float]:
   return color.name(), color.alphaF()
 
 
+def _glass_tint_from_color(value: str, *, lighten: int = 118, alpha_scale: float = 0.55) -> tuple[str, float]:
+  color = QColor(value)
+  color = color.lighter(lighten)
+  return color.name(), max(0.0, min(1.0, color.alphaF() * alpha_scale))
+
+
 class _GlassOverlayBinder(QObject):
   def __init__(self, widget: QWidget, overlay: GlassPanel):
     super().__init__(widget)
@@ -145,7 +151,7 @@ def apply_glass_panel(
   )
   widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
-  tint_color, tint_alpha = _color_to_hex_alpha(background)
+  tint_color, tint_alpha = _glass_tint_from_color(background)
   border_hex, border_alpha = _color_to_hex_alpha(border_color)
   if is_active:
     tint_alpha = min(1.0, tint_alpha + 0.05)
