@@ -2,3 +2,5 @@ __pycache__
 MyApp
 dist
 build
+.gcp
+.env
