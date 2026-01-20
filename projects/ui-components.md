@@ -46,10 +46,8 @@ UIComponents/
   core/
     __init__.py
     tokens.py          # design tokens: colors, spacing, radii, shadows, typography
-    theme.py           # theme application + defaults (dark glass)
-    styles.py          # reusable style builders (glass panel, neon border, gradients)
+    styles.py          # reusable style builders (glass panel, gradients)
     assets.py          # paths / registries for background presets (no fetching)
-    motion.py          # UI animation helpers (durations, easing names)
 
   backgrounds/
     __init__.py
@@ -57,54 +55,21 @@ UIComponents/
     aurora.py          # gradient aurora background component
     grid3d.py          # perspective grid background component
     particles.py       # lightweight particle layer background component
-    vignette.py        # vignette overlay component
-
-  primitives/
-    __init__.py
-    glass_panel.py     # base glass container w/ blur + border + shadow
-    neon_divider.py    # divider with glow and gradients
-    text.py            # typography components (H1/H2/Body/Caption/Code)
-    icon.py            # icon wrapper w/ sizing + glow
-    button.py          # primary/secondary/ghost buttons
-    input.py           # text input, search input, multiline
-    toggle.py          # switches, segmented controls
-    badge.py           # status badges
-    tooltip.py         # hover/press tooltips
-    spinner.py         # loading indicator
-    progress.py        # progress bar / ring
-    toast.py           # toast UI (render-only, no global manager logic)
-    modal.py           # modal shell (no navigation logic)
-    tabs.py            # tabs UI shell
-    table.py           # table UI shell (render-only)
-    empty_state.py     # empty state illustration + copy
 
   cards/
     __init__.py
-    stat_card.py       # KPI / stat tiles
-    info_card.py       # title + body + actions
-    media_card.py      # image/video placeholder card
-    profile_card.py    # avatar + metadata
-    timeline_card.py   # event timeline item card
+    profile_card.py    # like on iMessage - icon, name, last message, last message time (apply glassmorphism)
+    message_bubbles.py # should display a text message bubble in glassmorphism
 
   layouts/
     __init__.py
-    app_shell.py       # top-level layout shell (sidebar/topbar/contents)
-    sidebar.py         # futuristic sidebar nav UI (no routing logic)
-    topbar.py          # top bar UI (search slot, actions slot)
-    split_pane.py      # resizable panes UI wrapper (render-only)
-    grid.py            # responsive grid helpers
-    section.py         # standard section header + body
-
-  forms/
-    __init__.py
-    form_shell.py      # common form panel layout
-    field_row.py       # label + input + help text
-    validation_hint.py # purely visual hints, accepts state flags
-
+    sidebar.py         # futuristic sidebar nav UI which houses a list of profile cards (no routing logic)
+    messages.py        # a message window that displays all the messages within a chat with a person (like iMessage - top should display name and information icon that can be pressed [functionality for icon is out of scope for this project])
+    split_pane.py      # resizable panes UI wrapper (render-only) [This is eventually going to resize between the sidebar and the message window]
+  
   demo/
     __init__.py
-    gallery.py         # component gallery screen (UI-only)
-    presets.py         # sample props for previewing components (no real logic)
+    layout.py - this is where we demo the split pane. make the left half of the screen be a sidebar with profile cards that can be pressed into and the right side should be the messages screen with sample messages loaded. 
 
 ---
 
@@ -158,7 +123,6 @@ Create these background components with configurable intensity:
 - `AuroraGradientBackground(palette, motion_level)`
 - `Grid3DBackground(depth, glow_level)`
 - `ParticleLayerBackground(particle_count, drift, blur)`
-- `VignetteOverlay(strength, radius)`
 
 Also provide `BackgroundStack()` that composes:
 - Base gradient + grid + particles + vignette
@@ -186,76 +150,6 @@ Standard states must be visually consistent across all components:
 - Lower opacity
 - No glow
 - Cursor/interaction visuals muted
-
-### Error
-- Red/pink neon accent border + helper text (visual only)
-- No validation logic inside the component, only display based on props
-
----
-
-## Accessibility Requirements (UI-level)
-
-- Ensure focus rings exist for keyboard navigation
-- Minimum contrast ratio where possible (token-based)
-- Provide `aria_label` / `accessibility_text` props for interactive elements (framework permitting)
-- Never rely on color alone: pair with icon/text for status
-
----
-
-## Theming
-
-Support at least:
-- `DarkGlass` (default)
-- `MidnightNeon` (more saturated accent)
-- `LightGlass` (optional, if it still looks futuristic)
-
-Theme system should allow:
-- Set global tokens once
-- Override per component via `variant` or `style` prop
-
----
-
-## What to Build First (Recommended Order)
-
-1) `core/tokens.py`
-   - Colors: background, surface, border, text, accent, danger, success
-   - Spacing scale: xs/sm/md/lg/xl
-   - Radii: sm/md/lg/xl
-   - Shadows: ambient + glow
-   - Blur levels: glass blur scale
-   - Type scale: H1/H2/H3/body/caption/code
-
-2) `primitives/glass_panel.py`
-   - The “foundation” component
-
-3) `primitives/text.py`, `primitives/button.py`, `primitives/input.py`
-   - Must look cohesive and match the glass spec
-
-4) `layouts/app_shell.py` + `backgrounds/background_stack`
-   - A full-screen futuristic baseline
-
-5) Cards and higher-level components
-   - `stat_card`, `info_card`, `table`, `modal`
-
-6) `demo/gallery.py`
-   - A single place to visually verify everything together
-
----
-
-## Integration Rules (How App Uses This)
-
-The main app should:
-- Import from `UIComponents` only
-- Provide data + callbacks
-- Never style ad-hoc in the app unless via token overrides
-
-Example usage pattern (conceptual only, no code):
-- App creates `AppShell`
-- Places `BackgroundStack` behind it
-- Uses `Sidebar`, `Topbar`, `GlassPanel`, `StatCard`, etc.
-- Passes `on_click` handlers from app logic layer
-
----
 
 ## Testing & QA (UI-only)
 
