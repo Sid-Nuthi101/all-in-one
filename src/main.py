@@ -1,5 +1,13 @@
 import sys
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QTextEdit
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+  QApplication,
+  QGraphicsBlurEffect,
+  QPushButton,
+  QTextEdit,
+  QVBoxLayout,
+  QWidget,
+)
 
 from logic import get_status
 
@@ -8,8 +16,20 @@ class MainWindow(QWidget):
   def __init__(self):
     super().__init__()
     self.setWindowTitle("My Mac App")
+    self.setAttribute(Qt.WA_TranslucentBackground)
 
-    layout = QVBoxLayout()
+    layout = QVBoxLayout(self)
+    layout.setContentsMargins(24, 24, 24, 24)
+
+    glass_panel = QWidget()
+    glass_panel.setObjectName("glassPanel")
+    glass_layout = QVBoxLayout(glass_panel)
+    glass_layout.setContentsMargins(24, 24, 24, 24)
+    glass_layout.setSpacing(16)
+
+    blur = QGraphicsBlurEffect()
+    blur.setBlurRadius(18)
+    glass_panel.setGraphicsEffect(blur)
 
     self.output = QTextEdit()
     self.output.setReadOnly(True)
@@ -17,9 +37,33 @@ class MainWindow(QWidget):
     btn = QPushButton("Run Python logic")
     btn.clicked.connect(self.on_run)
 
-    layout.addWidget(btn)
-    layout.addWidget(self.output)
-    self.setLayout(layout)
+    glass_layout.addWidget(btn)
+    glass_layout.addWidget(self.output)
+    layout.addWidget(glass_panel)
+
+    self.setStyleSheet(
+      """
+      QWidget#glassPanel {
+        background-color: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 18px;
+      }
+      QTextEdit {
+        background-color: rgba(255, 255, 255, 0.35);
+        border-radius: 12px;
+        padding: 8px;
+      }
+      QPushButton {
+        background-color: rgba(255, 255, 255, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        border-radius: 12px;
+        padding: 10px 14px;
+      }
+      QPushButton:hover {
+        background-color: rgba(255, 255, 255, 0.55);
+      }
+      """
+    )
 
   def on_run(self):
     self.output.append(get_status())
