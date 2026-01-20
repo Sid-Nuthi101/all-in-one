@@ -51,6 +51,14 @@ class Gallery(QtWidgets.QFrame):
         content_layout.addWidget(MessageBubble("Incoming message preview.", is_outgoing=False, timestamp="09:41"))
         content_layout.addWidget(MessageBubble("Outgoing message preview.", is_outgoing=True, timestamp="09:42"))
         content_layout.addWidget(MessageCard("Alex Rivera", "Let’s sync on the latest draft.", timestamp="10:12"))
+        content_layout.addWidget(
+            MessageCard(
+                "You",
+                "Share the latest edits before lunch.",
+                timestamp="10:13",
+                is_outgoing=True,
+            )
+        )
         for item in TIMELINE_ITEMS:
             content_layout.addWidget(TimelineCard(**item))
         form = FormShell("Contact")

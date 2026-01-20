@@ -1,5 +1,5 @@
 """Button primitives."""
-from PySide6 import QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 from UIComponents.core.theme import resolve_tokens
 
@@ -53,3 +53,8 @@ class GlassButton(QtWidgets.QPushButton):
             "opacity: 0.5;"
             "}"
         )
+        shadow = QtWidgets.QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(tokens.blur.sm)
+        shadow.setOffset(0, 4)
+        shadow.setColor(QtGui.QColor(0, 0, 0, 120))
+        self.setGraphicsEffect(shadow)

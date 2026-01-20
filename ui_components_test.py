@@ -193,6 +193,12 @@ class MainWindow(QtWidgets.QWidget):
                 MessageCard("Alex Rivera", "Let’s sync on the latest draft.", timestamp="10:12"),
             )
         )
+        container_layout.addWidget(
+            ComponentRow(
+                "MessageCard (outgoing)",
+                MessageCard("You", "Share the latest edits before lunch.", timestamp="10:13", is_outgoing=True),
+            )
+        )
         container_layout.addWidget(ComponentRow("TimelineCard", TimelineCard("09:30", "Update", "A timeline entry")))
 
         app_shell = AppShell()

@@ -1,5 +1,5 @@
 """Glass panel primitive."""
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from UIComponents.core.styles import glass_panel_style
 from UIComponents.core.theme import resolve_tokens
@@ -23,10 +23,11 @@ class GlassPanel(QtWidgets.QFrame):
             f"QFrame#{self.objectName()} {{{glass_panel_style(tokens, radius=radius, is_active=is_active)}}}"
         )
         if enable_blur:
-            blur = QtWidgets.QGraphicsBlurEffect(self)
-            blur.setBlurRadius(tokens.blur.md)
-            blur.setBlurHints(QtWidgets.QGraphicsBlurEffect.QualityHint)
-            self.setGraphicsEffect(blur)
+            shadow = QtWidgets.QGraphicsDropShadowEffect(self)
+            shadow.setBlurRadius(tokens.blur.lg)
+            shadow.setOffset(0, 12)
+            shadow.setColor(QtGui.QColor(0, 0, 0, 140))
+            self.setGraphicsEffect(shadow)
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(
             tokens.spacing.lg,

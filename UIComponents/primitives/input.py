@@ -1,5 +1,5 @@
 """Input primitives."""
-from PySide6 import QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 from UIComponents.core.theme import resolve_tokens
 
@@ -38,6 +38,11 @@ class GlassInput(QtWidgets.QLineEdit):
             f"box-shadow: 0 0 12px rgba(110, 231, 255, 0.4);"
             "}"
         )
+        shadow = QtWidgets.QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(tokens.blur.sm)
+        shadow.setOffset(0, 4)
+        shadow.setColor(QtGui.QColor(0, 0, 0, 120))
+        self.setGraphicsEffect(shadow)
 
 
 class GlassTextArea(QtWidgets.QTextEdit):
@@ -70,3 +75,8 @@ class GlassTextArea(QtWidgets.QTextEdit):
             f"box-shadow: 0 0 12px rgba(110, 231, 255, 0.4);"
             "}"
         )
+        shadow = QtWidgets.QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(tokens.blur.sm)
+        shadow.setOffset(0, 4)
+        shadow.setColor(QtGui.QColor(0, 0, 0, 120))
+        self.setGraphicsEffect(shadow)

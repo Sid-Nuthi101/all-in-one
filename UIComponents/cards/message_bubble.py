@@ -18,7 +18,7 @@ class MessageBubble(QtWidgets.QFrame):
         tokens = resolve_tokens(tokens)
         self.setObjectName(class_name or "MessageBubble")
         layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(tokens.spacing.md, tokens.spacing.sm, tokens.spacing.md, tokens.spacing.sm)
+        layout.setContentsMargins(tokens.spacing.lg, tokens.spacing.md, tokens.spacing.lg, tokens.spacing.md)
         layout.setSpacing(tokens.spacing.xs)
         message_label = QtWidgets.QLabel(text)
         message_label.setWordWrap(True)
@@ -34,12 +34,12 @@ class MessageBubble(QtWidgets.QFrame):
                 f"font-size: {tokens.typography.caption_size}px;"
             )
             layout.addWidget(time_label)
-        bubble_color = tokens.colors.accent if is_outgoing else tokens.colors.surface_alt
+        bubble_color = tokens.colors.message_outgoing if is_outgoing else tokens.colors.message_incoming
         border_color = tokens.colors.border_active if is_outgoing else tokens.colors.border
         self.setStyleSheet(
             f"QFrame#{self.objectName()} {{"
             f"background: {bubble_color};"
             f"border: 1px solid {border_color};"
-            f"border-radius: {tokens.radius.lg}px;"
+            f"border-radius: {tokens.radius.xl}px;"
             "}}"
         )

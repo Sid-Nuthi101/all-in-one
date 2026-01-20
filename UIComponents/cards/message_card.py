@@ -47,4 +47,6 @@ class MessageCard(GlassPanel):
             )
             header.addWidget(time_label)
         layout.addLayout(header)
-        layout.addWidget(MessageBubble(message, is_outgoing=is_outgoing, timestamp="", tokens=tokens))
+        bubble = MessageBubble(message, is_outgoing=is_outgoing, timestamp="", tokens=tokens)
+        alignment = QtCore.Qt.AlignRight if is_outgoing else QtCore.Qt.AlignLeft
+        layout.addWidget(bubble, alignment=alignment)

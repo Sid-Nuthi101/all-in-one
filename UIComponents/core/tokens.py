@@ -17,6 +17,8 @@ class ColorTokens:
     accent_secondary: str = "#A57CFF"
     danger: str = "#FF6B9A"
     success: str = "#5EFFB1"
+    message_outgoing: str = "#0A84FF"
+    message_incoming: str = "#1C1C1E"
 
 
 @dataclass(frozen=True)
@@ -91,6 +93,8 @@ MIDNIGHT_NEON = DesignTokens(
         accent_secondary="#B88CFF",
         danger="#FF7BB1",
         success="#6CFFC2",
+        message_outgoing="#0A84FF",
+        message_incoming="#111827",
     )
 )
 
@@ -108,6 +112,8 @@ LIGHT_GLASS = DesignTokens(
         accent_secondary="#7C5CFF",
         danger="#F04438",
         success="#12B76A",
+        message_outgoing="#2563EB",
+        message_incoming="#111827",
     )
 )
 
