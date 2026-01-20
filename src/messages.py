@@ -141,9 +141,13 @@ class MessageBridge:
         '''
         subprocess.run(["osascript", "-e", script])
 
-    def last_100_messages_in_chat(self, chat_rowid: int) -> List[Tuple[int, int, str, Optional[str]]]:
+    def last_messages_in_chat(
+        self,
+        chat_rowid: int,
+        limit: int = 100,
+    ) -> List[Tuple[int, int, str, Optional[str]]]:
         """
-        Returns last 100 messages for a single conversation (chat ROWID).
+        Returns last N messages for a single conversation (chat ROWID).
         Each row: (date, is_from_me, text, handle)
         """
         self.cur.execute("""
@@ -157,9 +161,16 @@ class MessageBridge:
             LEFT JOIN handle h ON h.ROWID = m.handle_id
             WHERE cmj.chat_id = ?
             ORDER BY m.date DESC
-            LIMIT 100
-        """, (chat_rowid,))
+            LIMIT ?
+        """, (chat_rowid, limit))
         return self.cur.fetchall()
+
+    def last_100_messages_in_chat(self, chat_rowid: int) -> List[Tuple[int, int, str, Optional[str]]]:
+        """
+        Returns last 100 messages for a single conversation (chat ROWID).
+        Each row: (date, is_from_me, text, handle)
+        """
+        return self.last_messages_in_chat(chat_rowid, limit=100)
 
     def last_100_messages_for_latest_conversations(self, x: int) -> Dict[int, List[Tuple[int, int, str, Optional[str]]]]:
         """
@@ -200,7 +211,7 @@ class MessageBridge:
 
         out: Dict[int, List[Tuple[int, int, str, Optional[str]]]] = {}
         for chat_id in chat_ids:
-            out[chat_id] = self.last_100_messages_in_chat(chat_id)
+            out[chat_id] = self.last_messages_in_chat(chat_id, limit=100)
 
         return out
 

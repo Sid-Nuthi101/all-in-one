@@ -79,6 +79,7 @@ class MainWindow(QMainWindow):
     left_layout.setSpacing(12)
     left_layout.setAlignment(Qt.AlignTop)
 
+    self.bridge = None
     chats = self._load_chats()
 
     self.chat_rows = []
@@ -112,7 +113,20 @@ class MainWindow(QMainWindow):
     header_layout.addWidget(info_button)
 
     right_layout.addWidget(header)
-    right_layout.addStretch()
+
+    self.message_scroll = QScrollArea()
+    self.message_scroll.setObjectName("messageScroll")
+    self.message_scroll.setWidgetResizable(True)
+    self.message_scroll.setFrameShape(QFrame.NoFrame)
+    right_layout.addWidget(self.message_scroll)
+
+    self.message_scroll_contents = QWidget()
+    self.message_scroll.setWidget(self.message_scroll_contents)
+
+    self.message_layout = QVBoxLayout(self.message_scroll_contents)
+    self.message_layout.setContentsMargins(20, 16, 20, 16)
+    self.message_layout.setSpacing(12)
+    self.message_layout.setAlignment(Qt.AlignTop)
 
     self.splitter.addWidget(left_container)
     self.splitter.addWidget(right_container)
@@ -148,6 +162,25 @@ class MainWindow(QMainWindow):
       }
       QPushButton#infoButton:hover {
         background-color: rgba(255, 255, 255, 0.25);
+      }
+      QScrollArea#messageScroll {
+        background-color: transparent;
+      }
+      QScrollArea#messageScroll QWidget {
+        background-color: transparent;
+      }
+      QFrame#messageBubble {
+        background-color: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 16px;
+        padding: 8px 12px;
+      }
+      QFrame#messageBubble[fromMe="true"] {
+        background-color: rgba(74, 108, 247, 0.35);
+        border: 1px solid rgba(139, 92, 246, 0.5);
+      }
+      QLabel#messageText {
+        color: #ffffff;
       }
       #chatRow{
         max-height: 56px;
@@ -223,6 +256,7 @@ class MainWindow(QMainWindow):
     self.name_label.setText(chat["name"])
     for chat_row in self.chat_rows:
       self._set_row_selected(chat_row, chat_row is row)
+    self._load_messages(chat)
 
   def _set_row_selected(self, row, selected):
     row.setProperty("selected", selected)
@@ -230,18 +264,92 @@ class MainWindow(QMainWindow):
     row.style().polish(row)
     row.update()
 
+  def _clear_layout(self, layout):
+    while layout.count():
+      item = layout.takeAt(0)
+      widget = item.widget()
+      if widget is not None:
+        widget.deleteLater()
+      spacer = item.spacerItem()
+      if spacer is not None:
+        del spacer
+
+  def _build_message_bubble(self, message):
+    wrapper = QWidget()
+    wrapper_layout = QHBoxLayout(wrapper)
+    wrapper_layout.setContentsMargins(0, 0, 0, 0)
+    wrapper_layout.setSpacing(0)
+
+    bubble = QFrame()
+    bubble.setObjectName("messageBubble")
+    bubble.setProperty("fromMe", message["is_from_me"])
+
+    bubble_layout = QVBoxLayout(bubble)
+    bubble_layout.setContentsMargins(12, 8, 12, 8)
+    bubble_layout.setSpacing(4)
+
+    text = QLabel(message["text"])
+    text.setObjectName("messageText")
+    text.setWordWrap(True)
+    text.setTextInteractionFlags(Qt.TextSelectableByMouse)
+    text.setMaximumWidth(420)
+
+    bubble_layout.addWidget(text)
+
+    if message["is_from_me"]:
+      wrapper_layout.addStretch()
+      wrapper_layout.addWidget(bubble)
+    else:
+      wrapper_layout.addWidget(bubble)
+      wrapper_layout.addStretch()
+
+    return wrapper
+
+  def _load_messages(self, chat):
+    self._clear_layout(self.message_layout)
+    messages = []
+    if self.bridge and "id" in chat:
+      try:
+        chat_id = int(chat["id"])
+        rows = self.bridge.last_messages_in_chat(chat_id, limit=60)
+        for date_val, is_from_me, text, handle in reversed(rows):
+          messages.append(
+            {
+              "text": text or "",
+              "is_from_me": bool(is_from_me),
+              "handle": handle,
+              "date": date_val,
+            }
+          )
+      except Exception:
+        messages = []
+
+    if not messages:
+      fallback_messages = [
+        {"text": "Hey! Are we still on for later?", "is_from_me": False},
+        {"text": "Yep — finishing up a few things, be there soon.", "is_from_me": True},
+        {"text": "Awesome. See you in 20!", "is_from_me": False},
+      ]
+      messages = fallback_messages
+
+    for message in messages:
+      self.message_layout.addWidget(self._build_message_bubble(message))
+    self.message_layout.addStretch()
+
   def _load_chats(self):
     fallback = [
-      {"name": "Alex Morgan", "time": "2:14 PM", "preview": "Did you see the new designs?", "initials": "AM"},
-      {"name": "Jordan Lee", "time": "1:02 PM", "preview": "Let’s sync after the standup.", "initials": "JL"},
-      {"name": "Priya Patel", "time": "12:47 PM", "preview": "Shipping the update in 10 minutes.", "initials": "PP"},
+      {"id": "0", "name": "Alex Morgan", "time": "2:14 PM", "preview": "Did you see the new designs?", "initials": "AM"},
+      {"id": "1", "name": "Jordan Lee", "time": "1:02 PM", "preview": "Let’s sync after the standup.", "initials": "JL"},
+      {"id": "2", "name": "Priya Patel", "time": "12:47 PM", "preview": "Shipping the update in 10 minutes.", "initials": "PP"},
     ]
 
     try:
       bridge = MessageBridge()
+      self.bridge = bridge
       chats = bridge.top_chats(limit=50)
       return chats or fallback
     except Exception:
+      self.bridge = None
       return fallback
 
 
