@@ -32,20 +32,17 @@ class MainWindow(QWidget):
     splitter.setHandleWidth(6)
 
     left_container = QWidget()
-    left_layout = QStackedLayout(left_container)
+    left_layout = QVBoxLayout(left_container)
+    left_layout.setContentsMargins(12, 12, 12, 12)
+    left_layout.setSpacing(12)
+    left_layout.setAlignment(Qt.AlignTop)
 
     content = QWidget()
     content_layout = QVBoxLayout(content)
 
-    glass_panel = QWidget()
-    glass_panel.setObjectName("glassPanel")
-    glass_layout = QVBoxLayout(glass_panel)
-    glass_layout.setContentsMargins(24, 24, 24, 24)
-    glass_layout.setSpacing(16)
-
-    blur = QGraphicsBlurEffect()
-    blur.setBlurRadius(18)
-    glass_panel.setGraphicsEffect(blur)
+    chats_panel = QWidget()
+    chats_panel.setObjectName("chatsPanel")
+    chats_layout = QVBoxLayout(chats_panel)
 
     chats = [
       {
@@ -69,8 +66,8 @@ class MainWindow(QWidget):
     ]
 
     for chat in chats:
-      glass_layout.addWidget(self._build_chat_row(chat))
-    content_layout.addWidget(glass_panel)
+      chats_layout.addWidget(self._build_chat_row(chat))
+    content_layout.addWidget(chats_panel)
     left_layout.addWidget(content)
 
     right_container = QWidget()
@@ -95,6 +92,7 @@ class MainWindow(QWidget):
     header_layout.addWidget(info_button)
     right_layout.addWidget(right_header)
     right_layout.addStretch()
+    left_layout.addStretch()
 
     splitter.addWidget(left_container)
     splitter.addWidget(right_container)
