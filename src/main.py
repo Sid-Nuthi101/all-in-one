@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
   QSizePolicy,
 )
 
+from messages import MessageBridge
 from logic import get_status
 
 
@@ -43,11 +44,7 @@ class MainWindow(QMainWindow):
     left_layout.setSpacing(12)
     left_layout.setAlignment(Qt.AlignTop)
 
-    chats = [
-      {"name": "Alex Morgan", "time": "2:14 PM", "preview": "Did you see the new designs?", "initials": "AM"},
-      {"name": "Jordan Lee", "time": "1:02 PM", "preview": "Let’s sync after the standup.", "initials": "JL"},
-      {"name": "Priya Patel", "time": "12:47 PM", "preview": "Shipping the update in 10 minutes.", "initials": "PP"},
-    ]
+    chats = self._load_chats()
 
     self.chat_rows = []
     for chat in chats:
@@ -198,6 +195,20 @@ class MainWindow(QMainWindow):
     row.style().unpolish(row)
     row.style().polish(row)
     row.update()
+
+  def _load_chats(self):
+    fallback = [
+      {"name": "Alex Morgan", "time": "2:14 PM", "preview": "Did you see the new designs?", "initials": "AM"},
+      {"name": "Jordan Lee", "time": "1:02 PM", "preview": "Let’s sync after the standup.", "initials": "JL"},
+      {"name": "Priya Patel", "time": "12:47 PM", "preview": "Shipping the update in 10 minutes.", "initials": "PP"},
+    ]
+
+    try:
+      bridge = MessageBridge()
+      chats = bridge.top_chats(limit=50)
+      return chats or fallback
+    except Exception:
+      return fallback
 
 
 def main():
