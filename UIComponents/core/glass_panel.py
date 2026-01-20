@@ -51,12 +51,21 @@ class GlassPanel(QWidget):
 
     self._cached_bg = QPixmap()
     self._capture_scheduled = False
+    self._capture_parent = None
 
     self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
     self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
     self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
 
     # Watch parent changes/resize/moves to refresh cache.
+    self.set_capture_parent(parent)
+
+  def set_capture_parent(self, parent: QWidget | None) -> None:
+    if parent is self._capture_parent:
+      return
+    if self._capture_parent is not None:
+      self._capture_parent.removeEventFilter(self)
+    self._capture_parent = parent
     if parent is not None:
       parent.installEventFilter(self)
 

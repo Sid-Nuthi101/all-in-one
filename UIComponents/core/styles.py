@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QGraphicsDropShadowEffect, QWidget
 
+from .glass_panel import GlassPanel
 from .tokens import COLORS, EFFECTS, RADII, SHADOWS, SPACING, TYPOGRAPHY
 
 
@@ -57,6 +58,58 @@ def glass_panel_style(
     }}
   """.strip()
 
+
+def _color_to_hex_alpha(value: str) -> tuple[str, float]:
+  color = QColor(value)
+  return color.name(), color.alphaF()
+
+
+class _GlassOverlayBinder(QObject):
+  def __init__(self, widget: QWidget, overlay: GlassPanel):
+    super().__init__(widget)
+    self.widget = widget
+    self.overlay = overlay
+    widget.installEventFilter(self)
+    if widget.parentWidget() is not None:
+      widget.parentWidget().installEventFilter(self)
+    self.sync()
+
+  def eventFilter(self, obj, event):
+    t = event.type()
+    if obj is self.widget and t in (
+      QEvent.Type.Move,
+      QEvent.Type.Resize,
+      QEvent.Type.Show,
+      QEvent.Type.Hide,
+      QEvent.Type.ParentChange,
+    ):
+      self.sync()
+    elif obj is self.widget.parentWidget() and t in (
+      QEvent.Type.Resize,
+      QEvent.Type.Move,
+    ):
+      self.sync()
+    return super().eventFilter(obj, event)
+
+  def sync(self) -> None:
+    parent = self.widget.parentWidget()
+    if parent is None:
+      self.overlay.hide()
+      self.overlay.set_capture_parent(None)
+      self.overlay.setParent(None)
+      return
+    if self.overlay.parentWidget() is not parent:
+      self.overlay.setParent(parent)
+      self.overlay.set_capture_parent(parent)
+      parent.installEventFilter(self)
+    self.overlay.setGeometry(self.widget.geometry())
+    self.overlay.stackUnder(self.widget)
+    if self.widget.isVisible():
+      self.overlay.show()
+      self.overlay.schedule_capture()
+    else:
+      self.overlay.hide()
+
 def apply_glass_panel(
   widget: QWidget,
   *,
@@ -73,7 +126,6 @@ def apply_glass_panel(
 
   radius_value = radius if radius is not None else RADII.lg
   padding_value = padding if padding is not None else SPACING.lg
-  border_width = EFFECTS.border_width_active if is_active else EFFECTS.border_width
   border_color = COLORS.border_active if is_active else COLORS.border
   background = COLORS.surface if variant == "primary" else COLORS.surface_alt
   text_color = COLORS.text_secondary if is_disabled else COLORS.text_primary
@@ -82,9 +134,9 @@ def apply_glass_panel(
   widget.setStyleSheet(
     f"""
     QWidget#{name} {{
-      background: {background};
+      background: transparent;
       border-radius: {radius_value}px;
-      border: {border_width}px solid {border_color};
+      border: none;
       color: {text_color};
       padding: {padding_value}px;
       font-family: {TYPOGRAPHY.font_family};
@@ -92,11 +144,44 @@ def apply_glass_panel(
     """.strip()
   )
   widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
+  tint_color, tint_alpha = _color_to_hex_alpha(background)
+  border_hex, border_alpha = _color_to_hex_alpha(border_color)
+  if is_active:
+    tint_alpha = min(1.0, tint_alpha + 0.05)
+  if is_disabled:
+    tint_alpha *= 0.7
+    border_alpha *= 0.6
+
+  overlay = getattr(widget, "_glass_overlay", None)
+  if overlay is None:
+    overlay = GlassPanel(
+      tint=tint_color,
+      tint_alpha=tint_alpha,
+      border=border_hex,
+      border_alpha=border_alpha,
+      radius=radius_value,
+      parent=widget.parentWidget(),
+    )
+    widget._glass_overlay = overlay
+  else:
+    overlay.tint = tint_color
+    overlay.tint_alpha = tint_alpha
+    overlay.border = border_hex
+    overlay.border_alpha = border_alpha
+    overlay.radius = radius_value
+
   glow = QGraphicsDropShadowEffect()
   glow.setBlurRadius(EFFECTS.blur_radius)
   glow.setOffset(0, 0)
   glow.setColor(QColor(COLORS.glow if is_active else COLORS.border))
-  widget.setGraphicsEffect(glow)
+  overlay.setGraphicsEffect(glow)
+
+  binder = getattr(widget, "_glass_overlay_binder", None)
+  if binder is None:
+    widget._glass_overlay_binder = _GlassOverlayBinder(widget, overlay)
+  else:
+    binder.sync()
 
 
 def pill_button_style(is_active: bool = False, is_disabled: bool = False) -> str:
