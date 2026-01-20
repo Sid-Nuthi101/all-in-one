@@ -9,10 +9,12 @@ from PySide6.QtWidgets import (
   QPushButton,
   QSplitter,
   QStackedLayout,
+  QTextEdit,
   QVBoxLayout,
   QWidget,
 )
 
+from logic import get_status
 
 
 class MainWindow(QWidget):
@@ -31,14 +33,9 @@ class MainWindow(QWidget):
 
     left_container = QWidget()
     left_layout = QStackedLayout(left_container)
-    left_layout.setStackingMode(QStackedLayout.StackAll)
-
-    background = QWidget()
-    background.setObjectName("glassBackground")
 
     content = QWidget()
     content_layout = QVBoxLayout(content)
-    content_layout.setContentsMargins(24, 24, 24, 24)
 
     glass_panel = QWidget()
     glass_panel.setObjectName("glassPanel")
@@ -73,9 +70,7 @@ class MainWindow(QWidget):
 
     for chat in chats:
       glass_layout.addWidget(self._build_chat_row(chat))
-    glass_layout.addStretch()
     content_layout.addWidget(glass_panel)
-    left_layout.addWidget(background)
     left_layout.addWidget(content)
 
     right_container = QWidget()
@@ -87,7 +82,7 @@ class MainWindow(QWidget):
     right_header = QWidget()
     right_header.setObjectName("rightHeader")
     header_layout = QHBoxLayout(right_header)
-    header_layout.setContentsMargins(0, 0, 0, 0)
+    header_layout.setContentsMargins(12, 8, 12, 8) 
     header_layout.setSpacing(8)
 
     name_label = QLabel("Alex Morgan")
@@ -116,8 +111,6 @@ class MainWindow(QWidget):
       }
       QWidget#rightHeader {
         background-color: rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        padding: 8px 12px;
       }
       QLabel#chatName {
         color: #ffffff;
@@ -134,35 +127,31 @@ class MainWindow(QWidget):
         background-color: rgba(255, 255, 255, 0.25);
       }
       QWidget#glassPanel {
-        background-color: rgba(255, 255, 255, 0.18);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 18px;
+        padding: 0px;
+        margin: 0px;
       }
-      QFrame#chatRow {
-        background-color: rgba(255, 255, 255, 0.22);
-        border: 1px solid rgba(255, 255, 255, 0.28);
-        border-radius: 14px;
-        padding: 10px;
+      #chatRow{
+        max-height: 40px;
       }
-      QLabel#chatAvatar {
+      QTextEdit {
         background-color: rgba(255, 255, 255, 0.35);
-        border-radius: 24px;
-        color: #1d1d1f;
-        font-weight: 600;
+        border-radius: 12px;
+        padding: 8px;
       }
-      QLabel#chatName {
-        color: #1d1d1f;
-        font-weight: 700;
+      QPushButton {
+        background-color: rgba(255, 255, 255, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        border-radius: 12px;
+        padding: 10px 14px;
       }
-      QLabel#chatTime {
-        color: rgba(29, 29, 31, 0.6);
-        font-size: 12px;
-      }
-      QLabel#chatPreview {
-        color: rgba(29, 29, 31, 0.7);
+      QPushButton:hover {
+        background-color: rgba(255, 255, 255, 0.55);
       }
       """
     )
+
+  def on_run(self):
+    self.output.append(get_status())
 
   def _build_chat_row(self, chat):
     row = QFrame()
@@ -204,7 +193,6 @@ class MainWindow(QWidget):
     row_layout.addWidget(avatar)
     row_layout.addWidget(text_container)
     return row
-
 
 def main():
   app = QApplication(sys.argv)
