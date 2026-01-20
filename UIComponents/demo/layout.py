@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtWidgets import QHBoxLayout, QWidget
+from PySide6.QtWidgets import QStackedLayout, QWidget
 
 from ..backgrounds.stack import BackgroundStack
 from ..layouts.messages import MessageWindow
@@ -50,8 +50,8 @@ class DemoLayout(QWidget):
 
     background = BackgroundStack()
 
-    layout = QHBoxLayout()
-    layout.setContentsMargins(0, 0, 0, 0)
+    layout = QStackedLayout()
+    layout.setStackingMode(QStackedLayout.StackingMode.StackAll)
     layout.addWidget(background)
     layout.addWidget(split)
     self.setLayout(layout)

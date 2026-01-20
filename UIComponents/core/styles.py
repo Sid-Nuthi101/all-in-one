@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QGraphicsDropShadowEffect, QWidget
 
 from .tokens import COLORS, EFFECTS, RADII, SHADOWS, SPACING, TYPOGRAPHY
 
@@ -52,7 +54,12 @@ def apply_glass_panel(
       padding=padding,
     )
   )
-  widget.setGraphicsEffect(None)
+  widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+  glow = QGraphicsDropShadowEffect()
+  glow.setBlurRadius(EFFECTS.blur_radius)
+  glow.setOffset(0, 0)
+  glow.setColor(QColor(COLORS.glow if is_active else COLORS.border))
+  widget.setGraphicsEffect(glow)
 
 
 def pill_button_style(is_active: bool = False, is_disabled: bool = False) -> str:

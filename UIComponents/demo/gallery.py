@@ -40,11 +40,15 @@ class ComponentGallery(QWidget):
     content_layout.setSpacing(SPACING.lg)
 
     content_layout.addWidget(_section_label("Backgrounds"))
-    content_layout.addWidget(_named_component("AuroraGradientBackground", AuroraGradientBackground()))
-    content_layout.addWidget(_named_component("Grid3DBackground", Grid3DBackground()))
-    content_layout.addWidget(_named_component("ParticleLayerBackground", ParticleLayerBackground()))
-    content_layout.addWidget(_named_component("StarfieldBackground", StarfieldBackground()))
-    content_layout.addWidget(_named_component("BackgroundStack", BackgroundStack()))
+    content_layout.addWidget(
+      _named_component("AuroraGradientBackground", _sized(AuroraGradientBackground(), 180))
+    )
+    content_layout.addWidget(_named_component("Grid3DBackground", _sized(Grid3DBackground(), 180)))
+    content_layout.addWidget(
+      _named_component("ParticleLayerBackground", _sized(ParticleLayerBackground(), 180))
+    )
+    content_layout.addWidget(_named_component("StarfieldBackground", _sized(StarfieldBackground(), 180)))
+    content_layout.addWidget(_named_component("BackgroundStack", _sized(BackgroundStack(), 200)))
 
     content_layout.addWidget(_section_label("Cards"))
     content_layout.addWidget(
@@ -75,7 +79,7 @@ class ComponentGallery(QWidget):
         }
       ],
     )
-    content_layout.addWidget(_named_component("Sidebar", sidebar))
+    content_layout.addWidget(_named_component("Sidebar", _sized(sidebar, 240)))
 
     message_window = MessageWindow(
       "Nova Garcia",
@@ -84,10 +88,10 @@ class ComponentGallery(QWidget):
         {"text": "Systems green.", "timestamp": "09:41", "is_own": True},
       ],
     )
-    content_layout.addWidget(_named_component("MessageWindow", message_window))
+    content_layout.addWidget(_named_component("MessageWindow", _sized(message_window, 240)))
 
     split_pane = SplitPane(sidebar, message_window)
-    content_layout.addWidget(_named_component("SplitPane", split_pane))
+    content_layout.addWidget(_named_component("SplitPane", _sized(split_pane, 260)))
 
     content_layout.addStretch()
     content.setLayout(content_layout)
@@ -120,3 +124,8 @@ def _named_component(name: str, widget: QWidget) -> QWidget:
   container_layout.addWidget(widget)
   container.setLayout(container_layout)
   return container
+
+
+def _sized(widget: QWidget, height: int) -> QWidget:
+  widget.setMinimumHeight(height)
+  return widget
