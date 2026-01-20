@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
   QApplication,
   QGraphicsBlurEffect,
   QPushButton,
+  QSplitter,
   QStackedLayout,
   QTextEdit,
   QVBoxLayout,
@@ -21,15 +22,22 @@ class MainWindow(QWidget):
     self.setAttribute(Qt.WA_NoSystemBackground)
     self.setWindowOpacity(0.9)
 
-    root_layout = QStackedLayout(self)
-    root_layout.setStackingMode(QStackedLayout.StackAll)
+    layout = QVBoxLayout(self)
+    layout.setContentsMargins(0, 0, 0, 0)
+
+    splitter = QSplitter(Qt.Horizontal)
+    splitter.setHandleWidth(6)
+
+    left_container = QWidget()
+    left_layout = QStackedLayout(left_container)
+    left_layout.setStackingMode(QStackedLayout.StackAll)
 
     background = QWidget()
     background.setObjectName("glassBackground")
 
     content = QWidget()
-    layout = QVBoxLayout(content)
-    layout.setContentsMargins(24, 24, 24, 24)
+    content_layout = QVBoxLayout(content)
+    content_layout.setContentsMargins(24, 24, 24, 24)
 
     glass_panel = QWidget()
     glass_panel.setObjectName("glassPanel")
@@ -49,14 +57,25 @@ class MainWindow(QWidget):
 
     glass_layout.addWidget(btn)
     glass_layout.addWidget(self.output)
-    layout.addWidget(glass_panel)
-    root_layout.addWidget(background)
-    root_layout.addWidget(content)
+    content_layout.addWidget(glass_panel)
+    left_layout.addWidget(background)
+    left_layout.addWidget(content)
+
+    right_container = QWidget()
+    right_container.setObjectName("blackPanel")
+
+    splitter.addWidget(left_container)
+    splitter.addWidget(right_container)
+    splitter.setSizes([320, 180])
+    layout.addWidget(splitter)
 
     self.setStyleSheet(
       """
       QWidget#glassBackground {
         background-color: rgba(255, 255, 255, 0.02);
+      }
+      QWidget#blackPanel {
+        background-color: #000000;
       }
       QWidget#glassPanel {
         background-color: rgba(255, 255, 255, 0.18);
