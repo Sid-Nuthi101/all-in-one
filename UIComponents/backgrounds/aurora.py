@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QLinearGradient, QPainter
 from PySide6.QtWidgets import QWidget
 
-from UIComponents.core.assets import GRADIENT_PRESETS
+from ..core.assets import GRADIENT_PRESETS
 
 
 class AuroraGradientBackground(QWidget):

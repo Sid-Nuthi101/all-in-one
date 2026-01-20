@@ -6,7 +6,7 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QWidget
 
-from UIComponents.core.tokens import COLORS
+from ..core.tokens import COLORS
 
 
 class ParticleLayerBackground(QWidget):

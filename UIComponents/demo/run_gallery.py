@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
 
-from UIComponents.demo.gallery import ComponentGallery
+if __package__ is None:
+  sys.path.append(str(Path(__file__).resolve().parents[2]))
+  from UIComponents.demo.gallery import ComponentGallery
+else:
+  from .gallery import ComponentGallery
 
 
 def main() -> int:

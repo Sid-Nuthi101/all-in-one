@@ -5,9 +5,9 @@ from typing import Callable, Iterable, Optional
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QPushButton, QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
 
-from UIComponents.cards.message_bubbles import MessageBubble, MessageBubbleRow
-from UIComponents.core.styles import apply_glass_panel, pill_button_style
-from UIComponents.core.tokens import COLORS, SPACING, TYPOGRAPHY
+from ..cards.message_bubbles import MessageBubble, MessageBubbleRow
+from ..core.styles import apply_glass_panel, pill_button_style
+from ..core.tokens import COLORS, SPACING, TYPOGRAPHY
 
 
 class MessageWindow(QWidget):

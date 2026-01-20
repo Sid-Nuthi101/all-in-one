@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
 
-from UIComponents.backgrounds import (
+from ..backgrounds import (
   AuroraGradientBackground,
   BackgroundStack,
   Grid3DBackground,
   ParticleLayerBackground,
   StarfieldBackground,
 )
-from UIComponents.cards import MessageBubble, MessageBubbleRow, ProfileCard
-from UIComponents.layouts import MessageWindow, Sidebar, SplitPane
-from UIComponents.core.tokens import COLORS, SPACING, TYPOGRAPHY
+from ..cards import MessageBubble, MessageBubbleRow, ProfileCard
+from ..layouts import MessageWindow, Sidebar, SplitPane
+from ..core.tokens import COLORS, SPACING, TYPOGRAPHY
 
 
 class ComponentGallery(QWidget):

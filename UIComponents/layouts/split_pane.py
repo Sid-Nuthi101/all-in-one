@@ -3,8 +3,8 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSplitter, QVBoxLayout, QWidget
 
-from UIComponents.core.styles import apply_glass_panel
-from UIComponents.core.tokens import SPACING
+from ..core.styles import apply_glass_panel
+from ..core.tokens import SPACING
 
 
 class SplitPane(QWidget):

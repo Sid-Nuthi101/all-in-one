@@ -3,8 +3,8 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QHBoxLayout, QVBoxLayout, QWidget
 
-from UIComponents.core.styles import apply_glass_panel
-from UIComponents.core.tokens import COLORS, RADII, SPACING, TYPOGRAPHY
+from ..core.styles import apply_glass_panel
+from ..core.tokens import COLORS, RADII, SPACING, TYPOGRAPHY
 
 
 class MessageBubble(QWidget):

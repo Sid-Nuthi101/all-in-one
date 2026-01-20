@@ -4,9 +4,9 @@ from typing import Callable, Iterable, Optional
 
 from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
 
-from UIComponents.cards.profile_card import ProfileCard
-from UIComponents.core.styles import apply_glass_panel
-from UIComponents.core.tokens import COLORS, SPACING, TYPOGRAPHY
+from ..cards.profile_card import ProfileCard
+from ..core.styles import apply_glass_panel
+from ..core.tokens import COLORS, SPACING, TYPOGRAPHY
 
 
 class Sidebar(QWidget):

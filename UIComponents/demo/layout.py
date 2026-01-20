@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QHBoxLayout, QWidget
 
-from UIComponents.backgrounds.stack import BackgroundStack
-from UIComponents.layouts.messages import MessageWindow
-from UIComponents.layouts.sidebar import Sidebar
-from UIComponents.layouts.split_pane import SplitPane
+from ..backgrounds.stack import BackgroundStack
+from ..layouts.messages import MessageWindow
+from ..layouts.sidebar import Sidebar
+from ..layouts.split_pane import SplitPane
 
 
 class DemoLayout(QWidget):

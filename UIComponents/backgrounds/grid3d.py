@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
-from UIComponents.core.tokens import COLORS
+from ..core.tokens import COLORS
 
 
 class Grid3DBackground(QWidget):
