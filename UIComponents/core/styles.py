@@ -17,7 +17,7 @@ def glass_panel_style(
     border_color = colors.border_active if is_active else colors.border
     return (
         f"background: qlineargradient(x1:0, y1:0, x2:1, y2:1, "
-        f"stop:0 {colors.surface}, stop:1 {colors.surface_alt});"
+        f"stop:0 rgba(255, 255, 255, 0.08), stop:0.4 {colors.surface}, stop:1 {colors.surface_alt});"
         f"border: 1px solid {border_color};"
         f"border-radius: {radius}px;"
         f"color: {colors.text_primary};"
