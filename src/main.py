@@ -17,6 +17,26 @@ from messages import MessageBridge
 from logic import get_status
 
 
+class ElidedLabel(QLabel):
+  def __init__(self, text="", parent=None):
+    super().__init__(text, parent)
+    self._full_text = text
+    self.setWordWrap(False)
+
+  def setText(self, text):
+    self._full_text = text
+    self._update_elide()
+
+  def resizeEvent(self, event):
+    super().resizeEvent(event)
+    self._update_elide()
+
+  def _update_elide(self):
+    metrics = self.fontMetrics()
+    elided = metrics.elidedText(self._full_text, Qt.ElideRight, max(self.width(), 10))
+    super().setText(elided)
+
+
 class MainWindow(QMainWindow):
   def __init__(self):
     super().__init__()
@@ -165,7 +185,7 @@ class MainWindow(QMainWindow):
     top_layout.addStretch()
     top_layout.addWidget(time)
 
-    preview = QLabel(chat["preview"])
+    preview = ElidedLabel(chat["preview"])
 
     text_layout.addWidget(top_row)
     text_layout.addWidget(preview)

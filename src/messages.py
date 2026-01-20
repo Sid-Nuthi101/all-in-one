@@ -116,7 +116,7 @@ class MessageBridge:
         for chat_id, display_name, chat_identifier, date_val, is_from_me, text, handle in rows:
             dt = self.apple_time_to_dt(date_val)
             name = display_name or ContactsConnector.get_contact_name(handle) or handle or chat_identifier or "Unknown"
-            preview = text.strip() or "No message"
+            preview = " ".join((text or "").split()) or "No message"
             time_str = dt.strftime("%I:%M %p").lstrip("0") if dt else ""
             initials = "".join([part[0] for part in name.split()[:2]]).upper() or "?"
             chats.append(
