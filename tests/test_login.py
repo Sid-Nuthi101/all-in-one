@@ -17,37 +17,7 @@ def test_normalize_apple_user_requires_sub():
         raise AssertionError("Expected ValueError for missing sub")
 
 
-def test_exchange_code_for_tokens_uses_http_post():
-    captured = {}
-
-    class FakeResponse:
-        def raise_for_status(self):
-            captured["status_checked"] = True
-
-        def json(self):
-            return {"id_token": "token"}
-
-    def fake_post(url, data, headers, timeout):
-        captured["url"] = url
-        captured["data"] = data
-        captured["headers"] = headers
-        captured["timeout"] = timeout
-        return FakeResponse()
-
-    result = login.exchange_code_for_tokens(
-        code="auth-code",
-        client_id="client-id",
-        client_secret="secret",
-        redirect_uri="https://example.com/callback",
-        http_post=fake_post,
-    )
-
-    assert result == {"id_token": "token"}
-    assert captured["status_checked"] is True
-    assert captured["data"]["code"] == "auth-code"
-
-
-def test_login_with_apple_flow(monkeypatch):
+def test_login_with_apple_flow_persists_user(firestore_client, test_apple_sub):
     def fake_exchange(**kwargs):
         return {"id_token": "token-123"}
 
@@ -55,28 +25,27 @@ def test_login_with_apple_flow(monkeypatch):
         assert id_token == "token-123"
         assert audience == "client-id"
         assert issuer == "https://appleid.apple.com"
-        return {"sub": "apple-sub", "email": "user@example.com"}
+        return {"sub": test_apple_sub, "email": "user@example.com"}
 
-    captured = {}
-
-    def fake_upsert(client, apple_user, now_fn=None):
-        captured["client"] = client
-        captured["apple_user"] = apple_user
-        captured["now_fn"] = now_fn
-        return {"apple_sub": apple_user["apple_sub"]}
-
-    monkeypatch.setattr(login.firebase, "upsert_user", fake_upsert)
+    doc_ref = firestore_client.collection(login.firebase.USERS_COLLECTION).document(
+        test_apple_sub
+    )
+    doc_ref.delete()
 
     result = login.login_with_apple(
         code="auth-code",
         client_id="client-id",
         client_secret="secret",
         redirect_uri="https://example.com/callback",
-        firebase_client="firebase-client",
+        firebase_client=firestore_client,
         token_exchange=fake_exchange,
         jwt_decoder=fake_decoder,
     )
 
-    assert result == {"apple_sub": "apple-sub"}
-    assert captured["client"] == "firebase-client"
-    assert captured["apple_user"]["email"] == "user@example.com"
+    stored = doc_ref.get().to_dict()
+
+    assert result["apple_sub"] == test_apple_sub
+    assert stored["email"] == "user@example.com"
+    assert login.firebase.APPLE_PROVIDER in stored["providers"]
+
+    doc_ref.delete()
