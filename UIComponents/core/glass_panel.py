@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QTimer, Qt
+from PySide6.QtCore import QEvent, QPoint, QRect, QTimer, Qt
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPixmap
 from PySide6.QtWidgets import QWidget
 
@@ -51,12 +51,21 @@ class GlassPanel(QWidget):
 
     self._cached_bg = QPixmap()
     self._capture_scheduled = False
+    self._capture_parent = None
 
     self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
     self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
     self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
 
     # Watch parent changes/resize/moves to refresh cache.
+    self.set_capture_parent(parent)
+
+  def set_capture_parent(self, parent: QWidget | None) -> None:
+    if parent is self._capture_parent:
+      return
+    if self._capture_parent is not None:
+      self._capture_parent.removeEventFilter(self)
+    self._capture_parent = parent
     if parent is not None:
       parent.installEventFilter(self)
 
@@ -80,12 +89,14 @@ class GlassPanel(QWidget):
 
   def _capture_background(self) -> None:
     self._capture_scheduled = False
-    par = self.parentWidget()
-    if par is None or not self.isVisible():
+    top = self.window()
+    if top is None or not self.isVisible():
       return
 
     # IMPORTANT: we’re not in our paintEvent anymore (queued), so grab is safe.
-    pm = par.grab(self.geometry())
+    top_left = self.mapTo(top, QPoint(0, 0))
+    rect = QRect(top_left, self.size())
+    pm = top.grab(rect)
     self._cached_bg = _blur_pixmap(pm, downsample=self.downsample)
     self.update()
 
