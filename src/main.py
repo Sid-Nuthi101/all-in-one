@@ -313,9 +313,12 @@ class MainWindow(QMainWindow):
         chat_id = int(chat["id"])
         rows = self.bridge.last_messages_in_chat(chat_id, limit=60)
         for date_val, is_from_me, text, handle in reversed(rows):
+          normalized_text = (text or "").strip()
+          if not normalized_text:
+            normalized_text = "Shared an attachment."
           messages.append(
             {
-              "text": text or "",
+              "text": normalized_text,
               "is_from_me": bool(is_from_me),
               "handle": handle,
               "date": date_val,
