@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
   QHBoxLayout,
   QLabel,
   QPushButton,
+  QScrollArea,
   QSplitter,
   QVBoxLayout,
   QWidget,
@@ -59,7 +60,21 @@ class MainWindow(QMainWindow):
     # --- LEFT ---
     left_container = QWidget()
     left_container.setObjectName("leftContainer")
-    left_layout = QVBoxLayout(left_container)
+    left_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+    left_outer_layout = QVBoxLayout(left_container)
+    left_outer_layout.setContentsMargins(0, 0, 0, 0)
+    left_outer_layout.setSpacing(0)
+
+    left_scroll = QScrollArea()
+    left_scroll.setObjectName("leftScroll")
+    left_scroll.setWidgetResizable(True)
+    left_scroll.setFrameShape(QFrame.NoFrame)
+    left_outer_layout.addWidget(left_scroll)
+
+    left_scroll_contents = QWidget()
+    left_scroll.setWidget(left_scroll_contents)
+
+    left_layout = QVBoxLayout(left_scroll_contents)
     left_layout.setContentsMargins(12, 12, 12, 12)
     left_layout.setSpacing(12)
     left_layout.setAlignment(Qt.AlignTop)
@@ -71,7 +86,6 @@ class MainWindow(QMainWindow):
       row = self._build_chat_row(chat)
       self.chat_rows.append(row)
       left_layout.addWidget(row)
-    left_layout.addStretch()
 
     # --- RIGHT ---
     right_container = QWidget()
@@ -102,8 +116,8 @@ class MainWindow(QMainWindow):
 
     self.splitter.addWidget(left_container)
     self.splitter.addWidget(right_container)
-    self.splitter.setStretchFactor(0, 0)
-    self.splitter.setStretchFactor(1, 1)
+    self.splitter.setStretchFactor(0, 1)
+    self.splitter.setStretchFactor(1, 3)
     self.splitter.setSizes([360, 1000])
 
     layout.addWidget(self.splitter)
