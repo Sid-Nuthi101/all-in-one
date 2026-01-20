@@ -120,8 +120,8 @@ class MainWindow(QMainWindow):
       }
       #chatRow{
         max-height: 56px;
-        border-radius: 12px;
-        padding: 6px;
+        border-radius: 6px;
+        padding: 10px 12px;
       }
       #chatRow[selected="true"] {
         background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
