@@ -3,6 +3,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
   QApplication,
   QGraphicsBlurEffect,
+  QHBoxLayout,
+  QLabel,
   QPushButton,
   QSplitter,
   QStackedLayout,
@@ -63,6 +65,26 @@ class MainWindow(QWidget):
 
     right_container = QWidget()
     right_container.setObjectName("blackPanel")
+    right_layout = QVBoxLayout(right_container)
+    right_layout.setContentsMargins(16, 16, 16, 16)
+    right_layout.setSpacing(12)
+
+    right_header = QWidget()
+    right_header.setObjectName("rightHeader")
+    header_layout = QHBoxLayout(right_header)
+    header_layout.setContentsMargins(12, 8, 12, 8)
+    header_layout.setSpacing(8)
+
+    name_label = QLabel("Alex Morgan")
+    name_label.setObjectName("chatName")
+    info_button = QPushButton("Info")
+    info_button.setObjectName("infoButton")
+
+    header_layout.addWidget(name_label)
+    header_layout.addStretch()
+    header_layout.addWidget(info_button)
+    right_layout.addWidget(right_header)
+    right_layout.addStretch()
 
     splitter.addWidget(left_container)
     splitter.addWidget(right_container)
@@ -76,6 +98,24 @@ class MainWindow(QWidget):
       }
       QWidget#blackPanel {
         background-color: #000000;
+      }
+      QWidget#rightHeader {
+        background-color: rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+      }
+      QLabel#chatName {
+        color: #ffffff;
+        font-weight: 600;
+      }
+      QPushButton#infoButton {
+        background-color: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+        border-radius: 10px;
+        padding: 6px 10px;
+      }
+      QPushButton#infoButton:hover {
+        background-color: rgba(255, 255, 255, 0.25);
       }
       QWidget#glassPanel {
         background-color: rgba(255, 255, 255, 0.18);
