@@ -12,12 +12,14 @@ from PySide6.QtWidgets import (
   QTextEdit,
   QVBoxLayout,
   QWidget,
+  QMainWindow
 )
+from PySide6.QtGui import QGuiApplication
 
 from logic import get_status
 
 
-class MainWindow(QWidget):
+class MainWindow(QMainWindow):
   def __init__(self):
     super().__init__()
     self.setWindowTitle("My Mac App")
@@ -25,8 +27,16 @@ class MainWindow(QWidget):
     self.setAttribute(Qt.WA_NoSystemBackground)
     self.setWindowOpacity(0.95)
 
-    layout = QVBoxLayout(self)
+    central = QWidget()
+    self.setCentralWidget(central)
+
+    layout = QVBoxLayout(central)
     layout.setContentsMargins(0, 0, 0, 0)
+
+    self.setUnifiedTitleAndToolBarOnMac(True)
+
+    # Allow your content to render under title bar (you’ll add top padding)
+    self.setAttribute(Qt.WA_StyledBackground, True)
 
     splitter = QSplitter(Qt.Horizontal)
     splitter.setHandleWidth(6)
