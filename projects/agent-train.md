@@ -321,6 +321,15 @@ For each user message `T`:
   - insufficient examples
   - job failure
 
+### 11.4 Setup (Local Dev)
+
+**Openai:** Required setup for local development and testing:
+- Set `OPENAI_API_KEY` in your shell or `.env`.
+- Ensure Firebase emulator or credentials are available (Service Account JSON or `GOOGLE_APPLICATION_CREDENTIALS`).
+- Configure `FIREBASE_PROJECT_ID` and collection names for `users` and `llmModels`.
+- Provide a local message source or fixture data for the data extraction service (e.g., export of last 3 months of sent messages).
+- Install dependencies for the pipeline (OpenAI SDK, Firebase Admin SDK, JSONL validation utilities).
+
 ---
 
 ## 12 Rollout Plan
@@ -363,8 +372,12 @@ For each user message `T`:
 ## 14 Open Questions
 
 - Minimum number of messages required to justify training?
+  - **Openai:** Require at least 500 sent messages and 10k tokens in the 90-day window; otherwise mark `failed_insufficient_data`.
 - Preferred base model for cost vs quality tradeoff?
+  - **Openai:** Use `gpt-4o-mini` for initial rollout; allow override via config for future upgrades.
 - Retrain cadence: time-based or delta-based?
+  - **Openai:** Use a hybrid rule: weekly schedule **and** require ≥20% new messages since last training to proceed.
 - Combine fine-tuning with lightweight prompt-based personalization?
+  - **Openai:** Yes—prepend a short system prompt at inference time to enforce safety and verbosity caps, but keep stylistic learning in the fine-tuned model.
 - Should we support multi-version A/B testing per user?
-
+  - **Openai:** Not in v1; keep a single active model with rollback to previous version on regression.
