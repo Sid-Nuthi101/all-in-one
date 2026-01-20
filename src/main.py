@@ -3,18 +3,15 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
   QApplication,
   QFrame,
-  QGraphicsBlurEffect,
   QHBoxLayout,
   QLabel,
   QPushButton,
   QSplitter,
-  QStackedLayout,
-  QTextEdit,
   QVBoxLayout,
   QWidget,
-  QMainWindow
+  QMainWindow,
+  QSizePolicy,
 )
-from PySide6.QtGui import QGuiApplication
 
 from logic import get_status
 
@@ -22,10 +19,12 @@ from logic import get_status
 class MainWindow(QMainWindow):
   def __init__(self):
     super().__init__()
-    self.setWindowTitle("My Mac App")
-    self.setAttribute(Qt.WA_TranslucentBackground)
-    self.setAttribute(Qt.WA_NoSystemBackground)
+
+    self.setWindowTitle("")
+    self.setWindowFlags(Qt.WindowMinMaxButtonsHint)
+
     self.setWindowOpacity(0.95)
+    self.setUnifiedTitleAndToolBarOnMac(True)
 
     central = QWidget()
     self.setCentralWidget(central)
@@ -33,94 +32,72 @@ class MainWindow(QMainWindow):
     layout = QVBoxLayout(central)
     layout.setContentsMargins(0, 0, 0, 0)
 
-    self.setUnifiedTitleAndToolBarOnMac(True)
+    self.splitter = QSplitter(Qt.Horizontal)
+    self.splitter.setHandleWidth(6)
 
-    # Allow your content to render under title bar (you’ll add top padding)
-    self.setAttribute(Qt.WA_StyledBackground, True)
-
-    splitter = QSplitter(Qt.Horizontal)
-    splitter.setHandleWidth(6)
-
+    # --- LEFT ---
     left_container = QWidget()
+    left_container.setObjectName("leftContainer")
     left_layout = QVBoxLayout(left_container)
     left_layout.setContentsMargins(12, 12, 12, 12)
     left_layout.setSpacing(12)
     left_layout.setAlignment(Qt.AlignTop)
 
-    content = QWidget()
-    content_layout = QVBoxLayout(content)
-
-    chats_panel = QWidget()
-    chats_panel.setObjectName("chatsPanel")
-    chats_layout = QVBoxLayout(chats_panel)
-
     chats = [
-      {
-        "name": "Alex Morgan",
-        "time": "2:14 PM",
-        "preview": "Did you see the new designs?",
-        "initials": "AM",
-      },
-      {
-        "name": "Jordan Lee",
-        "time": "1:02 PM",
-        "preview": "Let’s sync after the standup.",
-        "initials": "JL",
-      },
-      {
-        "name": "Priya Patel",
-        "time": "12:47 PM",
-        "preview": "Shipping the update in 10 minutes.",
-        "initials": "PP",
-      },
+      {"name": "Alex Morgan", "time": "2:14 PM", "preview": "Did you see the new designs?", "initials": "AM"},
+      {"name": "Jordan Lee", "time": "1:02 PM", "preview": "Let’s sync after the standup.", "initials": "JL"},
+      {"name": "Priya Patel", "time": "12:47 PM", "preview": "Shipping the update in 10 minutes.", "initials": "PP"},
     ]
 
     for chat in chats:
-      chats_layout.addWidget(self._build_chat_row(chat))
-    content_layout.addWidget(chats_panel)
-    left_layout.addWidget(content)
+      left_layout.addWidget(self._build_chat_row(chat))
+    left_layout.addStretch()
 
+    # --- RIGHT ---
     right_container = QWidget()
     right_container.setObjectName("blackPanel")
     right_layout = QVBoxLayout(right_container)
     right_layout.setContentsMargins(0, 0, 0, 0)
     right_layout.setSpacing(0)
 
-    right_header = QWidget()
-    right_header.setObjectName("rightHeader")
-    header_layout = QHBoxLayout(right_header)
-    header_layout.setContentsMargins(12, 8, 12, 8) 
+    # simple header row (top-left name + padding)
+    header = QWidget()
+    header.setObjectName("nameHeader")
+    header_layout = QHBoxLayout(header)
+    header_layout.setContentsMargins(12, 10, 12, 10)
     header_layout.setSpacing(8)
 
     name_label = QLabel("Alex Morgan")
     name_label.setObjectName("chatName")
+
     info_button = QPushButton("Info")
     info_button.setObjectName("infoButton")
 
     header_layout.addWidget(name_label)
     header_layout.addStretch()
     header_layout.addWidget(info_button)
-    right_layout.addWidget(right_header)
-    right_layout.addStretch()
-    left_layout.addStretch()
 
-    splitter.addWidget(left_container)
-    splitter.addWidget(right_container)
-    splitter.setStretchFactor(0, 0)  # left
-    splitter.setStretchFactor(1, 1)  # right grows
-    splitter.setSizes([360, 1000])
-    layout.addWidget(splitter)
+    right_layout.addWidget(header)
+    right_layout.addStretch()
+
+    self.splitter.addWidget(left_container)
+    self.splitter.addWidget(right_container)
+    self.splitter.setStretchFactor(0, 0)
+    self.splitter.setStretchFactor(1, 1)
+    self.splitter.setSizes([360, 1000])
+
+    layout.addWidget(self.splitter)
 
     self.setStyleSheet(
       """
-      QWidget#glassBackground {
-        background-color: rgba(255, 255, 255, 0.02);
+      #nameHeader {
+        background-color: rgba(255,255,255, 0.1);
+      }
+      #leftContainer {
+        border-radius: 10px;
       }
       QWidget#blackPanel {
         background-color: #000000;
-      }
-      QWidget#rightHeader {
-        background-color: rgba(255, 255, 255, 0.08);
       }
       QLabel#chatName {
         color: #ffffff;
@@ -136,26 +113,8 @@ class MainWindow(QMainWindow):
       QPushButton#infoButton:hover {
         background-color: rgba(255, 255, 255, 0.25);
       }
-      QWidget#glassPanel {
-        padding: 0px;
-        margin: 0px;
-      }
       #chatRow{
-        max-height: 40px;
-      }
-      QTextEdit {
-        background-color: rgba(255, 255, 255, 0.35);
-        border-radius: 12px;
-        padding: 8px;
-      }
-      QPushButton {
-        background-color: rgba(255, 255, 255, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.45);
-        border-radius: 12px;
-        padding: 10px 14px;
-      }
-      QPushButton:hover {
-        background-color: rgba(255, 255, 255, 0.55);
+        max-height: 56px;
       }
       """
     )
@@ -171,7 +130,6 @@ class MainWindow(QMainWindow):
     row_layout.setSpacing(12)
 
     avatar = QLabel(chat["initials"])
-    avatar.setObjectName("chatAvatar")
     avatar.setAlignment(Qt.AlignCenter)
     avatar.setFixedSize(48, 48)
 
@@ -188,21 +146,22 @@ class MainWindow(QMainWindow):
     name = QLabel(chat["name"])
     name.setObjectName("chatName")
     time = QLabel(chat["time"])
-    time.setObjectName("chatTime")
 
     top_layout.addWidget(name)
     top_layout.addStretch()
     top_layout.addWidget(time)
 
     preview = QLabel(chat["preview"])
-    preview.setObjectName("chatPreview")
 
     text_layout.addWidget(top_row)
     text_layout.addWidget(preview)
 
     row_layout.addWidget(avatar)
     row_layout.addWidget(text_container)
+
+    row.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
     return row
+
 
 def main():
   app = QApplication(sys.argv)
