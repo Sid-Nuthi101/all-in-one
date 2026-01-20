@@ -2,18 +2,17 @@ import sys
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
   QApplication,
+  QFrame,
   QGraphicsBlurEffect,
   QHBoxLayout,
   QLabel,
   QPushButton,
   QSplitter,
   QStackedLayout,
-  QTextEdit,
   QVBoxLayout,
   QWidget,
 )
 
-from logic import get_status
 
 
 class MainWindow(QWidget):
@@ -51,14 +50,30 @@ class MainWindow(QWidget):
     blur.setBlurRadius(18)
     glass_panel.setGraphicsEffect(blur)
 
-    self.output = QTextEdit()
-    self.output.setReadOnly(True)
+    chats = [
+      {
+        "name": "Alex Morgan",
+        "time": "2:14 PM",
+        "preview": "Did you see the new designs?",
+        "initials": "AM",
+      },
+      {
+        "name": "Jordan Lee",
+        "time": "1:02 PM",
+        "preview": "Let’s sync after the standup.",
+        "initials": "JL",
+      },
+      {
+        "name": "Priya Patel",
+        "time": "12:47 PM",
+        "preview": "Shipping the update in 10 minutes.",
+        "initials": "PP",
+      },
+    ]
 
-    btn = QPushButton("Run Python logic")
-    btn.clicked.connect(self.on_run)
-
-    glass_layout.addWidget(btn)
-    glass_layout.addWidget(self.output)
+    for chat in chats:
+      glass_layout.addWidget(self._build_chat_row(chat))
+    glass_layout.addStretch()
     content_layout.addWidget(glass_panel)
     left_layout.addWidget(background)
     left_layout.addWidget(content)
@@ -123,25 +138,72 @@ class MainWindow(QWidget):
         border: 1px solid rgba(255, 255, 255, 0.3);
         border-radius: 18px;
       }
-      QTextEdit {
+      QFrame#chatRow {
+        background-color: rgba(255, 255, 255, 0.22);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 14px;
+        padding: 10px;
+      }
+      QLabel#chatAvatar {
         background-color: rgba(255, 255, 255, 0.35);
-        border-radius: 12px;
-        padding: 8px;
+        border-radius: 24px;
+        color: #1d1d1f;
+        font-weight: 600;
       }
-      QPushButton {
-        background-color: rgba(255, 255, 255, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.45);
-        border-radius: 12px;
-        padding: 10px 14px;
+      QLabel#chatName {
+        color: #1d1d1f;
+        font-weight: 700;
       }
-      QPushButton:hover {
-        background-color: rgba(255, 255, 255, 0.55);
+      QLabel#chatTime {
+        color: rgba(29, 29, 31, 0.6);
+        font-size: 12px;
+      }
+      QLabel#chatPreview {
+        color: rgba(29, 29, 31, 0.7);
       }
       """
     )
 
-  def on_run(self):
-    self.output.append(get_status())
+  def _build_chat_row(self, chat):
+    row = QFrame()
+    row.setObjectName("chatRow")
+    row_layout = QHBoxLayout(row)
+    row_layout.setContentsMargins(0, 0, 0, 0)
+    row_layout.setSpacing(12)
+
+    avatar = QLabel(chat["initials"])
+    avatar.setObjectName("chatAvatar")
+    avatar.setAlignment(Qt.AlignCenter)
+    avatar.setFixedSize(48, 48)
+
+    text_container = QWidget()
+    text_layout = QVBoxLayout(text_container)
+    text_layout.setContentsMargins(0, 0, 0, 0)
+    text_layout.setSpacing(4)
+
+    top_row = QWidget()
+    top_layout = QHBoxLayout(top_row)
+    top_layout.setContentsMargins(0, 0, 0, 0)
+    top_layout.setSpacing(8)
+
+    name = QLabel(chat["name"])
+    name.setObjectName("chatName")
+    time = QLabel(chat["time"])
+    time.setObjectName("chatTime")
+
+    top_layout.addWidget(name)
+    top_layout.addStretch()
+    top_layout.addWidget(time)
+
+    preview = QLabel(chat["preview"])
+    preview.setObjectName("chatPreview")
+
+    text_layout.addWidget(top_row)
+    text_layout.addWidget(preview)
+
+    row_layout.addWidget(avatar)
+    row_layout.addWidget(text_container)
+    return row
 
 
 def main():
