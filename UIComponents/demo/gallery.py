@@ -7,7 +7,6 @@ from ..backgrounds import (
   BackgroundStack,
   Grid3DBackground,
   ParticleLayerBackground,
-  StarfieldBackground,
 )
 from ..cards import MessageBubble, MessageBubbleRow, ProfileCard
 from ..layouts import MessageWindow, Sidebar, SplitPane
@@ -43,7 +42,6 @@ class ComponentGallery(QWidget):
     content_layout.addWidget(_named_component("AuroraGradientBackground", AuroraGradientBackground()))
     content_layout.addWidget(_named_component("Grid3DBackground", Grid3DBackground()))
     content_layout.addWidget(_named_component("ParticleLayerBackground", ParticleLayerBackground()))
-    content_layout.addWidget(_named_component("StarfieldBackground", StarfieldBackground()))
     content_layout.addWidget(_named_component("BackgroundStack", BackgroundStack()))
 
     content_layout.addWidget(_section_label("Cards"))

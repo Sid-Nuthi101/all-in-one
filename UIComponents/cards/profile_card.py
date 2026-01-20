@@ -38,16 +38,6 @@ class ProfileCard(QWidget):
     avatar = QLabel(avatar_text)
     avatar.setFixedSize(32, 32)
     avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    avatar.setStyleSheet(
-      f"""
-      QLabel {{
-        background: {COLORS.surface_light};
-        border-radius: {RADII.md}px;
-        color: {COLORS.text_primary};
-        font-weight: 600;
-      }}
-      """.strip()
-    )
 
     text_layout = QVBoxLayout()
     name_label = QLabel(name)

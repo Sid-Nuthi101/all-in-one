@@ -1,27 +1,29 @@
-from __future__ import annotations
-
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QLinearGradient, QPainter
+from PySide6.QtGui import QPainter, QLinearGradient, QColor
 from PySide6.QtWidgets import QWidget
 
-from ..core.assets import GRADIENT_PRESETS
+from ..core.assets import BACKGROUND_PRESETS
 
 
 class AuroraGradientBackground(QWidget):
-  """Gradient aurora background component."""
-
-  def __init__(self, palette: str = "nebula", motion_level: float = 0.35):
+  def __init__(self, palette=None, motion_level=0.4, class_name=None):
     super().__init__()
-    self.palette = palette
+    self.palette = palette or BACKGROUND_PRESETS["aurora"]
     self.motion_level = motion_level
+    self.setMinimumHeight(180)  # <- important for gallery previews 
     self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+    if class_name:
+      self.setObjectName(class_name)
 
   def paintEvent(self, event):
     painter = QPainter(self)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     gradient = QLinearGradient(0, 0, self.width(), self.height())
-    preset = next((preset for preset in GRADIENT_PRESETS if preset.name == self.palette), GRADIENT_PRESETS[0])
-    for index, color in enumerate(preset.colors):
-      gradient.setColorAt(index / max(len(preset.colors) - 1, 1), color)
-    painter.fillRect(self.rect(), QBrush(gradient))
-    painter.end()
+
+    step = 1 / max(len(self.palette) - 1, 1)
+    for index, color in enumerate(self.palette):
+      qcolor = QColor(color)
+      qcolor.setAlphaF(0.75)
+      gradient.setColorAt(index * step, qcolor)
+
+    painter.fillRect(self.rect(), gradient)

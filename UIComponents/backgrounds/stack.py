@@ -6,11 +6,10 @@ from PySide6.QtWidgets import QStackedLayout, QWidget
 from .aurora import AuroraGradientBackground
 from .grid3d import Grid3DBackground
 from .particles import ParticleLayerBackground
-from .starfield import StarfieldBackground
 
 
 class BackgroundStack(QWidget):
-  """Composite background: gradient + grid + particles + starfield."""
+  """Composite background: gradient + grid + particles."""
 
   def __init__(self):
     super().__init__()
@@ -21,12 +20,10 @@ class BackgroundStack(QWidget):
     self._aurora = AuroraGradientBackground()
     self._grid = Grid3DBackground()
     self._particles = ParticleLayerBackground()
-    self._stars = StarfieldBackground()
 
     layout.addWidget(self._aurora)
     layout.addWidget(self._grid)
     layout.addWidget(self._particles)
-    layout.addWidget(self._stars)
 
     self.setLayout(layout)
 
