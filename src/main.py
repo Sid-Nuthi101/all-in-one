@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
   QApplication,
   QGraphicsBlurEffect,
   QPushButton,
+  QStackedLayout,
   QTextEdit,
   QVBoxLayout,
   QWidget,
@@ -18,7 +19,17 @@ class MainWindow(QWidget):
     self.setWindowTitle("My Mac App")
     self.setAttribute(Qt.WA_TranslucentBackground)
 
-    layout = QVBoxLayout(self)
+    root_layout = QStackedLayout(self)
+    root_layout.setStackingMode(QStackedLayout.StackAll)
+
+    background = QWidget()
+    background.setObjectName("glassBackground")
+    background_blur = QGraphicsBlurEffect()
+    background_blur.setBlurRadius(30)
+    background.setGraphicsEffect(background_blur)
+
+    content = QWidget()
+    layout = QVBoxLayout(content)
     layout.setContentsMargins(24, 24, 24, 24)
 
     glass_panel = QWidget()
@@ -40,9 +51,14 @@ class MainWindow(QWidget):
     glass_layout.addWidget(btn)
     glass_layout.addWidget(self.output)
     layout.addWidget(glass_panel)
+    root_layout.addWidget(background)
+    root_layout.addWidget(content)
 
     self.setStyleSheet(
       """
+      QWidget#glassBackground {
+        background-color: rgba(255, 255, 255, 0.12);
+      }
       QWidget#glassPanel {
         background-color: rgba(255, 255, 255, 0.18);
         border: 1px solid rgba(255, 255, 255, 0.3);
