@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
   QHBoxLayout,
   QLabel,
   QPushButton,
+  QScrollArea,
   QSplitter,
   QVBoxLayout,
   QWidget,
@@ -13,7 +14,28 @@ from PySide6.QtWidgets import (
   QSizePolicy,
 )
 
+from messages import MessageBridge
 from logic import get_status
+
+
+class ElidedLabel(QLabel):
+  def __init__(self, text="", parent=None):
+    super().__init__(text, parent)
+    self._full_text = text
+    self.setWordWrap(False)
+
+  def setText(self, text):
+    self._full_text = text
+    self._update_elide()
+
+  def resizeEvent(self, event):
+    super().resizeEvent(event)
+    self._update_elide()
+
+  def _update_elide(self):
+    metrics = self.fontMetrics()
+    elided = metrics.elidedText(self._full_text, Qt.ElideRight, max(self.width(), 10))
+    super().setText(elided)
 
 
 class MainWindow(QMainWindow):
@@ -38,23 +60,32 @@ class MainWindow(QMainWindow):
     # --- LEFT ---
     left_container = QWidget()
     left_container.setObjectName("leftContainer")
-    left_layout = QVBoxLayout(left_container)
+    left_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+    left_outer_layout = QVBoxLayout(left_container)
+    left_outer_layout.setContentsMargins(0, 0, 0, 0)
+    left_outer_layout.setSpacing(0)
+
+    left_scroll = QScrollArea()
+    left_scroll.setObjectName("leftScroll")
+    left_scroll.setWidgetResizable(True)
+    left_scroll.setFrameShape(QFrame.NoFrame)
+    left_outer_layout.addWidget(left_scroll)
+
+    left_scroll_contents = QWidget()
+    left_scroll.setWidget(left_scroll_contents)
+
+    left_layout = QVBoxLayout(left_scroll_contents)
     left_layout.setContentsMargins(12, 12, 12, 12)
     left_layout.setSpacing(12)
     left_layout.setAlignment(Qt.AlignTop)
 
-    chats = [
-      {"name": "Alex Morgan", "time": "2:14 PM", "preview": "Did you see the new designs?", "initials": "AM"},
-      {"name": "Jordan Lee", "time": "1:02 PM", "preview": "Let’s sync after the standup.", "initials": "JL"},
-      {"name": "Priya Patel", "time": "12:47 PM", "preview": "Shipping the update in 10 minutes.", "initials": "PP"},
-    ]
+    chats = self._load_chats()
 
     self.chat_rows = []
     for chat in chats:
       row = self._build_chat_row(chat)
       self.chat_rows.append(row)
       left_layout.addWidget(row)
-    left_layout.addStretch()
 
     # --- RIGHT ---
     right_container = QWidget()
@@ -85,8 +116,8 @@ class MainWindow(QMainWindow):
 
     self.splitter.addWidget(left_container)
     self.splitter.addWidget(right_container)
-    self.splitter.setStretchFactor(0, 0)
-    self.splitter.setStretchFactor(1, 1)
+    self.splitter.setStretchFactor(0, 1)
+    self.splitter.setStretchFactor(1, 3)
     self.splitter.setSizes([360, 1000])
 
     layout.addWidget(self.splitter)
@@ -168,7 +199,7 @@ class MainWindow(QMainWindow):
     top_layout.addStretch()
     top_layout.addWidget(time)
 
-    preview = QLabel(chat["preview"])
+    preview = ElidedLabel(chat["preview"])
 
     text_layout.addWidget(top_row)
     text_layout.addWidget(preview)
@@ -198,6 +229,20 @@ class MainWindow(QMainWindow):
     row.style().unpolish(row)
     row.style().polish(row)
     row.update()
+
+  def _load_chats(self):
+    fallback = [
+      {"name": "Alex Morgan", "time": "2:14 PM", "preview": "Did you see the new designs?", "initials": "AM"},
+      {"name": "Jordan Lee", "time": "1:02 PM", "preview": "Let’s sync after the standup.", "initials": "JL"},
+      {"name": "Priya Patel", "time": "12:47 PM", "preview": "Shipping the update in 10 minutes.", "initials": "PP"},
+    ]
+
+    try:
+      bridge = MessageBridge()
+      chats = bridge.top_chats(limit=50)
+      return chats or fallback
+    except Exception:
+      return fallback
 
 
 def main():

@@ -13,6 +13,8 @@ APPLE_EPOCH = 978307200  # seconds between 1970-01-01 and 2001-01-01
 class MessageBridge:
 
     def __init__(self, db_path=None):
+        if db_path is None:
+            self._copy_messages_db_snapshot()
         src = db_path or os.path.expanduser("~/Library/Messages/chat.db")
         self.tmp = "/tmp/chat.db"
         shutil.copy2(src, self.tmp)  # avoids "db locked" issues
@@ -78,6 +80,57 @@ class MessageBridge:
                 ContactsConnector.get_contact_name(handle) or handle or "unknown"
             )
             print(f"[{dt}] {sender}: {text}")
+
+    def top_chats(self, limit: int = 50) -> List[Dict[str, Optional[str]]]:
+        """
+        Returns a list of the most recent chats with display-friendly metadata.
+        """
+        self.cur.execute("""
+            SELECT
+                c.ROWID AS chat_id,
+                c.display_name,
+                c.chat_identifier,
+                m.date,
+                m.is_from_me,
+                COALESCE(m.text, '') AS text,
+                h.id AS handle
+            FROM chat c
+            JOIN chat_message_join cmj ON cmj.chat_id = c.ROWID
+            JOIN message m ON m.ROWID = cmj.message_id
+            LEFT JOIN handle h ON h.ROWID = m.handle_id
+            WHERE m.date = (
+                SELECT MAX(m2.date)
+                FROM chat_message_join cmj2
+                JOIN message m2 ON m2.ROWID = cmj2.message_id
+                WHERE cmj2.chat_id = c.ROWID
+            )
+            ORDER BY m.date DESC
+            LIMIT ?
+        """, (limit,))
+        rows = self.cur.fetchall()
+
+        handles = [row[6] for row in rows if row[4] == 0 and row[6]]
+        ContactsConnector.build_index_for_handles(handles)
+
+        chats: List[Dict[str, Optional[str]]] = []
+        for chat_id, display_name, chat_identifier, date_val, is_from_me, text, handle in rows:
+            dt = self.apple_time_to_dt(date_val)
+            name = display_name or ContactsConnector.get_contact_name(handle) or handle or chat_identifier or "Unknown"
+            preview = " ".join((text or "").split()) or "No message"
+            time_str = dt.strftime("%I:%M %p").lstrip("0") if dt else ""
+            initials = "".join([part[0] for part in name.split()[:2]]).upper() or "?"
+            chats.append(
+                {
+                    "id": str(chat_id),
+                    "name": name,
+                    "time": time_str,
+                    "preview": preview,
+                    "initials": initials,
+                    "is_from_me": "1" if is_from_me else "0",
+                }
+            )
+
+        return chats
     
     # Sends a Imessage message 
     def send_imessage(self, phone_or_email, text):
