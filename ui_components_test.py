@@ -9,6 +9,8 @@ from UIComponents.backgrounds.starfield import StarfieldBackground
 from UIComponents.backgrounds.vignette import VignetteOverlay
 from UIComponents.cards.info_card import InfoCard
 from UIComponents.cards.media_card import MediaCard
+from UIComponents.cards.message_bubble import MessageBubble
+from UIComponents.cards.message_card import MessageCard
 from UIComponents.cards.profile_card import ProfileCard
 from UIComponents.cards.stat_card import StatCard
 from UIComponents.cards.timeline_card import TimelineCard
@@ -55,7 +57,41 @@ class MainWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("UIComponents Test Harness")
-        self.setStyleSheet("background-color: #0A0F1F;")
+        self.setStyleSheet(
+            "background-color: #0A0F1F;"
+            "QScrollBar:vertical {"
+            "background: #0A0F1F;"
+            "width: 10px;"
+            "margin: 0px;"
+            "}"
+            "QScrollBar::handle:vertical {"
+            "background: rgba(110, 231, 255, 0.35);"
+            "border-radius: 5px;"
+            "min-height: 20px;"
+            "}"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {"
+            "height: 0px;"
+            "}"
+            "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {"
+            "background: transparent;"
+            "}"
+            "QScrollBar:horizontal {"
+            "background: #0A0F1F;"
+            "height: 10px;"
+            "margin: 0px;"
+            "}"
+            "QScrollBar::handle:horizontal {"
+            "background: rgba(110, 231, 255, 0.35);"
+            "border-radius: 5px;"
+            "min-width: 20px;"
+            "}"
+            "QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {"
+            "width: 0px;"
+            "}"
+            "QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {"
+            "background: transparent;"
+            "}"
+        )
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -142,6 +178,21 @@ class MainWindow(QtWidgets.QWidget):
         container_layout.addWidget(ComponentRow("InfoCard", InfoCard("Info", "Some descriptive text", actions=info_actions)))
         container_layout.addWidget(ComponentRow("MediaCard", MediaCard("Media", "Preview")))
         container_layout.addWidget(ComponentRow("ProfileCard", ProfileCard("Nova Lane", "Designer")))
+        container_layout.addWidget(
+            ComponentRow("MessageBubble (incoming)", MessageBubble("Incoming message preview.", timestamp="09:41"))
+        )
+        container_layout.addWidget(
+            ComponentRow(
+                "MessageBubble (outgoing)",
+                MessageBubble("Outgoing message preview.", is_outgoing=True, timestamp="09:42"),
+            )
+        )
+        container_layout.addWidget(
+            ComponentRow(
+                "MessageCard",
+                MessageCard("Alex Rivera", "Let’s sync on the latest draft.", timestamp="10:12"),
+            )
+        )
         container_layout.addWidget(ComponentRow("TimelineCard", TimelineCard("09:30", "Update", "A timeline entry")))
 
         app_shell = AppShell()

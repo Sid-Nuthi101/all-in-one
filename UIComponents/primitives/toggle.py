@@ -24,15 +24,20 @@ class GlassToggle(QtWidgets.QCheckBox):
             f"font-family: {tokens.typography.font_family};"
             "}"
             f"QCheckBox#{self.objectName()}::indicator {{"
-            f"width: 36px;"
-            f"height: 20px;"
-            f"border-radius: 10px;"
-            f"background: {tokens.colors.surface_alt};"
+            f"width: 40px;"
+            f"height: 22px;"
+            f"border-radius: 11px;"
+            f"background: {tokens.colors.surface};"
             f"border: 1px solid {tokens.colors.border};"
+            "margin-right: 6px;"
             "}"
             f"QCheckBox#{self.objectName()}::indicator:checked {{"
-            f"background: {tokens.colors.accent};"
+            f"background: qlineargradient(x1:0, y1:0, x2:1, y2:1, "
+            f"stop:0 {tokens.colors.accent}, stop:1 {tokens.colors.accent_secondary});"
             f"border: 1px solid {tokens.colors.border_active};"
+            "}"
+            f"QCheckBox#{self.objectName()}::indicator:disabled {{"
+            "opacity: 0.5;"
             "}"
         )
 
@@ -58,7 +63,7 @@ class SegmentedControl(QtWidgets.QWidget):
             button.setCheckable(True)
             button.setStyleSheet(
                 f"QPushButton {{"
-                f"background: {tokens.colors.surface};"
+                f"background: {tokens.colors.surface_alt};"
                 f"border: 1px solid {tokens.colors.border};"
                 f"border-radius: {tokens.radius.sm}px;"
                 f"padding: {tokens.spacing.xs}px {tokens.spacing.sm}px;"
@@ -67,6 +72,9 @@ class SegmentedControl(QtWidgets.QWidget):
                 f"QPushButton:checked {{"
                 f"background: {tokens.colors.accent};"
                 f"color: {tokens.colors.text_primary};"
+                "}"
+                f"QPushButton:hover {{"
+                f"border-color: {tokens.colors.border_active};"
                 "}"
             )
             self.buttons.append(button)

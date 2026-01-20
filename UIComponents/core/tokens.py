@@ -6,8 +6,8 @@ from typing import Dict
 @dataclass(frozen=True)
 class ColorTokens:
     background: str = "#0A0F1F"
-    surface: str = "rgba(20, 28, 45, 0.65)"
-    surface_alt: str = "rgba(30, 40, 60, 0.7)"
+    surface: str = "rgba(12, 18, 32, 0.7)"
+    surface_alt: str = "rgba(18, 26, 44, 0.78)"
     border: str = "rgba(120, 150, 255, 0.25)"
     border_active: str = "rgba(120, 190, 255, 0.65)"
     text_primary: str = "#E8EEFF"

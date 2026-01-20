@@ -7,6 +7,8 @@ from UIComponents.cards.media_card import MediaCard
 from UIComponents.cards.profile_card import ProfileCard
 from UIComponents.cards.stat_card import StatCard
 from UIComponents.cards.timeline_card import TimelineCard
+from UIComponents.cards.message_bubble import MessageBubble
+from UIComponents.cards.message_card import MessageCard
 from UIComponents.demo.presets import INFO_CARD, STAT_CARDS, TIMELINE_ITEMS
 from UIComponents.forms.field_row import FieldRow
 from UIComponents.forms.form_shell import FormShell
@@ -46,6 +48,9 @@ class Gallery(QtWidgets.QFrame):
         content_layout.addWidget(InfoCard(**INFO_CARD, actions=[GlassButton("Action")]))
         content_layout.addWidget(MediaCard("Media Preview", "Futuristic placeholder"))
         content_layout.addWidget(ProfileCard("Nova Lane", "Interaction Designer"))
+        content_layout.addWidget(MessageBubble("Incoming message preview.", is_outgoing=False, timestamp="09:41"))
+        content_layout.addWidget(MessageBubble("Outgoing message preview.", is_outgoing=True, timestamp="09:42"))
+        content_layout.addWidget(MessageCard("Alex Rivera", "Let’s sync on the latest draft.", timestamp="10:12"))
         for item in TIMELINE_ITEMS:
             content_layout.addWidget(TimelineCard(**item))
         form = FormShell("Contact")
