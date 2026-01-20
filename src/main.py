@@ -18,15 +18,14 @@ class MainWindow(QWidget):
     super().__init__()
     self.setWindowTitle("My Mac App")
     self.setAttribute(Qt.WA_TranslucentBackground)
+    self.setAttribute(Qt.WA_NoSystemBackground)
+    self.setWindowOpacity(0.9)
 
     root_layout = QStackedLayout(self)
     root_layout.setStackingMode(QStackedLayout.StackAll)
 
     background = QWidget()
     background.setObjectName("glassBackground")
-    background_blur = QGraphicsBlurEffect()
-    background_blur.setBlurRadius(30)
-    background.setGraphicsEffect(background_blur)
 
     content = QWidget()
     layout = QVBoxLayout(content)
@@ -57,7 +56,7 @@ class MainWindow(QWidget):
     self.setStyleSheet(
       """
       QWidget#glassBackground {
-        background-color: rgba(255, 255, 255, 0.12);
+        background-color: rgba(255, 255, 255, 0.02);
       }
       QWidget#glassPanel {
         background-color: rgba(255, 255, 255, 0.18);
