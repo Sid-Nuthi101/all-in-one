@@ -49,8 +49,11 @@ class MainWindow(QMainWindow):
       {"name": "Priya Patel", "time": "12:47 PM", "preview": "Shipping the update in 10 minutes.", "initials": "PP"},
     ]
 
+    self.chat_rows = []
     for chat in chats:
-      left_layout.addWidget(self._build_chat_row(chat))
+      row = self._build_chat_row(chat)
+      self.chat_rows.append(row)
+      left_layout.addWidget(row)
     left_layout.addStretch()
 
     # --- RIGHT ---
@@ -67,13 +70,13 @@ class MainWindow(QMainWindow):
     header_layout.setContentsMargins(12, 10, 12, 10)
     header_layout.setSpacing(8)
 
-    name_label = QLabel("Alex Morgan")
-    name_label.setObjectName("chatName")
+    self.name_label = QLabel("Alex Morgan")
+    self.name_label.setObjectName("chatName")
 
     info_button = QPushButton("Info")
     info_button.setObjectName("infoButton")
 
-    header_layout.addWidget(name_label)
+    header_layout.addWidget(self.name_label)
     header_layout.addStretch()
     header_layout.addWidget(info_button)
 
@@ -87,6 +90,8 @@ class MainWindow(QMainWindow):
     self.splitter.setSizes([360, 1000])
 
     layout.addWidget(self.splitter)
+    if self.chat_rows:
+      self._select_chat(chats[0], self.chat_rows[0])
 
     self.setStyleSheet(
       """
@@ -115,6 +120,16 @@ class MainWindow(QMainWindow):
       }
       #chatRow{
         max-height: 56px;
+        border-radius: 12px;
+        padding: 6px;
+      }
+      #chatRow[selected="true"] {
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+          stop:0 rgba(74, 108, 247, 0.8),
+          stop:1 rgba(139, 92, 246, 0.8));
+      }
+      #chatRow[selected="true"] QLabel {
+        color: #ffffff;
       }
       """
     )
@@ -125,6 +140,8 @@ class MainWindow(QMainWindow):
   def _build_chat_row(self, chat):
     row = QFrame()
     row.setObjectName("chatRow")
+    row.setCursor(Qt.PointingHandCursor)
+    row.setProperty("selected", False)
     row_layout = QHBoxLayout(row)
     row_layout.setContentsMargins(0, 0, 0, 0)
     row_layout.setSpacing(12)
@@ -160,7 +177,27 @@ class MainWindow(QMainWindow):
     row_layout.addWidget(text_container)
 
     row.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+    row.mousePressEvent = lambda event, chat=chat, row=row: self._on_chat_clicked(
+      event,
+      chat,
+      row,
+    )
     return row
+
+  def _on_chat_clicked(self, event, chat, row):
+    self._select_chat(chat, row)
+    event.accept()
+
+  def _select_chat(self, chat, row):
+    self.name_label.setText(chat["name"])
+    for chat_row in self.chat_rows:
+      self._set_row_selected(chat_row, chat_row is row)
+
+  def _set_row_selected(self, row, selected):
+    row.setProperty("selected", selected)
+    row.style().unpolish(row)
+    row.style().polish(row)
+    row.update()
 
 
 def main():
