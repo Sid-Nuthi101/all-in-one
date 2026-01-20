@@ -23,7 +23,7 @@ class MainWindow(QWidget):
     self.setWindowTitle("My Mac App")
     self.setAttribute(Qt.WA_TranslucentBackground)
     self.setAttribute(Qt.WA_NoSystemBackground)
-    self.setWindowOpacity(0.9)
+    self.setWindowOpacity(0.95)
 
     layout = QVBoxLayout(self)
     layout.setContentsMargins(0, 0, 0, 0)
@@ -96,7 +96,9 @@ class MainWindow(QWidget):
 
     splitter.addWidget(left_container)
     splitter.addWidget(right_container)
-    splitter.setSizes([320, 180])
+    splitter.setStretchFactor(0, 0)  # left
+    splitter.setStretchFactor(1, 1)  # right grows
+    splitter.setSizes([360, 1000])
     layout.addWidget(splitter)
 
     self.setStyleSheet(
@@ -195,7 +197,7 @@ class MainWindow(QWidget):
 def main():
   app = QApplication(sys.argv)
   w = MainWindow()
-  w.resize(500, 350)
+  w.setMinimumSize(1100, 600)
   w.show()
   sys.exit(app.exec())
 
