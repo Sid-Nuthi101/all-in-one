@@ -24,7 +24,7 @@ def test_upsert_user_sets_created_at_on_first_login(
 
     snapshot = doc_ref.get()
     stored = snapshot.to_dict()
-
+    
     assert stored["created_at"] == fixed_time.isoformat()
     assert stored["last_login_at"] == fixed_time.isoformat()
     assert stored["providers"] == [firebase.APPLE_PROVIDER]
