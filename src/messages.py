@@ -44,6 +44,10 @@ class MessageBridge:
         ts = (t / 1_000_000_000) + APPLE_EPOCH
         return datetime.fromtimestamp(ts)
 
+    @staticmethod
+    def _escape_applescript_string(value: str) -> str:
+        return value.replace("\\", "\\\\").replace('"', '\\"')
+
     def last_100_messages(self):
         # 1) Fetch messages
         self.cur.execute("""
@@ -145,6 +149,7 @@ class MessageBridge:
                     "initials": initials,
                     "is_from_me": "1" if is_from_me else "0",
                     "participants": participant_names,
+                    "chat_identifier": chat_identifier,
                 }
             )
 
@@ -161,12 +166,32 @@ class MessageBridge:
     
     # Sends a Imessage message 
     def send_imessage(self, phone_or_email, text):
+        escaped_text = self._escape_applescript_string(text)
+        escaped_recipient = self._escape_applescript_string(phone_or_email)
         script = f'''
         tell application "Messages"
-            send "{text}" to buddy "{phone_or_email}" of (service 1 whose service type is iMessage)
+            send "{escaped_text}" to buddy "{escaped_recipient}" of (service 1 whose service type is iMessage)
         end tell
         '''
         subprocess.run(["osascript", "-e", script])
+
+    def send_message_to_chat(self, chat: Dict[str, Optional[str]], text: str) -> None:
+        chat_identifier = chat.get("chat_identifier")
+        escaped_text = self._escape_applescript_string(text)
+        if chat_identifier:
+            escaped_chat_identifier = self._escape_applescript_string(chat_identifier)
+            script = f'''
+            tell application "Messages"
+                set targetChat to first chat whose id is "{escaped_chat_identifier}"
+                send "{escaped_text}" to targetChat
+            end tell
+            '''
+            subprocess.run(["osascript", "-e", script])
+            return
+
+        participants = chat.get("participants") or []
+        if participants:
+            self.send_imessage(participants[0], text)
     
     MessageRow = Tuple[int, int, str, Optional[str], str, List[Dict[str, Any]]]
 
