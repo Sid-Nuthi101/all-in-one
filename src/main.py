@@ -526,10 +526,12 @@ class SignInDialog(QDialog):
 def _build_firestore_client():
   project_id = os.getenv("FIREBASE_PROJECT_ID")
   if not project_id:
+    print("Sign in with Apple disabled: FIREBASE_PROJECT_ID is not set.")
     return None
   try:
     from google.cloud import firestore
   except ImportError:
+    print("Sign in with Apple disabled: google-cloud-firestore is not installed.")
     return None
   return firestore.Client(project=project_id)
 
@@ -544,6 +546,10 @@ def _ensure_signed_in(parent=None):
   redirect_uri = os.getenv("APPLE_REDIRECT_URI")
   state = os.getenv("APPLE_AUTH_STATE", "all-in-one-login")
   if not all([client_id, client_secret, redirect_uri]):
+    print(
+      "Sign in with Apple disabled: set APPLE_CLIENT_ID, APPLE_CLIENT_SECRET, and "
+      "APPLE_REDIRECT_URI."
+    )
     QMessageBox.warning(
       parent,
       "Missing Apple config",
@@ -572,6 +578,7 @@ def _ensure_signed_in(parent=None):
       prompt_sign_in=prompt_sign_in,
     )
   except Exception as exc:
+    print(f"Sign in with Apple failed: {exc}")
     QMessageBox.critical(parent, "Sign in failed", str(exc))
 
 
