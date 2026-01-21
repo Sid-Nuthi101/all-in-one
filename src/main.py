@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
     left_layout.setSpacing(12)
     left_layout.setAlignment(Qt.AlignTop)
 
-    self.bridge = None
+    self.bridge = MessageBridge()
     chats = self._load_chats()
 
     self.chat_rows = []
@@ -309,51 +309,28 @@ class MainWindow(QMainWindow):
     self._clear_layout(self.message_layout)
     messages = []
     if self.bridge and "id" in chat:
-      try:
-        chat_id = int(chat["id"])
-        rows = self.bridge.last_messages_in_chat(chat_id, limit=60)
-        for date_val, is_from_me, text, handle in reversed(rows):
-          normalized_text = (text or "").strip()
-          if not normalized_text:
-            normalized_text = "Shared an attachment."
-          messages.append(
-            {
-              "text": normalized_text,
-              "is_from_me": bool(is_from_me),
-              "handle": handle,
-              "date": date_val,
-            }
-          )
-      except Exception:
-        messages = []
-
-    if not messages:
-      fallback_messages = [
-        {"text": "Hey! Are we still on for later?", "is_from_me": False},
-        {"text": "Yep — finishing up a few things, be there soon.", "is_from_me": True},
-        {"text": "Awesome. See you in 20!", "is_from_me": False},
-      ]
-      messages = fallback_messages
-
+      chat_id = int(chat["id"])
+      rows = self.bridge.last_messages_in_chat(chat_id, limit=60) # load messages
+      for date_val, is_from_me, text, handle, kind in reversed(rows):
+        normalized_text = (text or "").strip()
+        if not normalized_text:
+          normalized_text = "Shared an attachment."
+        messages.append(
+          {
+            "text": text or "",
+            "is_from_me": bool(is_from_me),
+            "handle": handle,
+            "date": date_val,
+          }
+        )
     for message in messages:
       self.message_layout.addWidget(self._build_message_bubble(message))
     self.message_layout.addStretch()
 
   def _load_chats(self):
-    fallback = [
-      {"id": "0", "name": "Alex Morgan", "time": "2:14 PM", "preview": "Did you see the new designs?", "initials": "AM"},
-      {"id": "1", "name": "Jordan Lee", "time": "1:02 PM", "preview": "Let’s sync after the standup.", "initials": "JL"},
-      {"id": "2", "name": "Priya Patel", "time": "12:47 PM", "preview": "Shipping the update in 10 minutes.", "initials": "PP"},
-    ]
-
-    try:
-      bridge = MessageBridge()
-      self.bridge = bridge
-      chats = bridge.top_chats(limit=50)
-      return chats or fallback
-    except Exception:
-      self.bridge = None
-      return fallback
+    bridge = MessageBridge()
+    chats = bridge.top_chats(limit=50)
+    return chats
 
 
 def main():
