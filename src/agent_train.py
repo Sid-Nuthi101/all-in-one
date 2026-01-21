@@ -34,6 +34,7 @@ class TrainingConfig:
     min_tokens: int = 10_000
     short_message_threshold: int = 3
     redact_pii: bool = True
+    lookback_days: Optional[int] = 90
 
 
 @dataclass(frozen=True)
@@ -127,12 +128,15 @@ class InMemoryMetadataStore:
         return self._models.get((user_id, latest_version))
 
 
-def filter_last_90_days(
+def filter_recent_messages(
     messages: Iterable[MessageRecord],
     now: Optional[datetime] = None,
+    lookback_days: Optional[int] = 90,
 ) -> List[MessageRecord]:
     now = now or datetime.now()
-    cutoff = now - timedelta(days=90)
+    if lookback_days is None:
+        return list(messages)
+    cutoff = now - timedelta(days=lookback_days)
     return [msg for msg in messages if msg.timestamp >= cutoff]
 
 
@@ -294,7 +298,11 @@ class FineTuningOrchestrator:
         now: Optional[datetime] = None,
     ) -> ModelMetadata:
         now = now or datetime.now()
-        filtered = filter_last_90_days(messages, now=now)
+        filtered = filter_recent_messages(
+            messages,
+            now=now,
+            lookback_days=self._config.lookback_days,
+        )
         cleaned = clean_messages(filtered, self._config)
         token_estimate = sum(estimate_tokens(msg.text) for msg in cleaned)
 
