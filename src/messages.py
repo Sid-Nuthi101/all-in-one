@@ -85,7 +85,7 @@ class MessageBridge:
             )
             print(f"[{dt}] {sender}: {text}")
 
-    def top_chats(self, limit: int = 50) -> List[Dict[str, Optional[str]]]:
+    def top_chats(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
         Returns a list of the most recent chats with display-friendly metadata.
         """
@@ -123,7 +123,7 @@ class MessageBridge:
 
         ContactsConnector.build_index_for_handles(all_handles)
 
-        chats: List[Dict[str, Optional[str]]] = []
+        chats: List[Dict[str, Any]] = []
         for chat_id, display_name, chat_identifier, date_val, is_from_me, text, handle in rows:
             dt = self.apple_time_to_dt(date_val)
             name = display_name or ContactsConnector.get_contact_name(handle) or handle or chat_identifier or "Unknown"
@@ -132,7 +132,8 @@ class MessageBridge:
             initials = "".join([part[0] for part in name.split()[:2]]).upper() or "?"
             seen_participants = set()
             participant_names = []
-            for h in participant_handles.get(chat_id, []):
+            handle_list = participant_handles.get(chat_id, [])
+            for h in handle_list:
                 if not h:
                     continue
                 name_val = ContactsConnector.get_contact_name(h) or h or "Unknown"
@@ -150,6 +151,7 @@ class MessageBridge:
                     "is_from_me": "1" if is_from_me else "0",
                     "participants": participant_names,
                     "chat_identifier": chat_identifier,
+                    "participant_handles": handle_list,
                 }
             )
 
@@ -175,23 +177,38 @@ class MessageBridge:
         '''
         subprocess.run(["osascript", "-e", script])
 
-    def send_message_to_chat(self, chat: Dict[str, Optional[str]], text: str) -> None:
+    def send_message_to_chat(self, chat: Dict[str, Any], text: str) -> None:
         chat_identifier = chat.get("chat_identifier")
         escaped_text = self._escape_applescript_string(text)
         if chat_identifier:
             escaped_chat_identifier = self._escape_applescript_string(chat_identifier)
             script = f'''
             tell application "Messages"
-                set targetChat to first chat whose id is "{escaped_chat_identifier}"
-                send "{escaped_text}" to targetChat
+                set targetChat to missing value
+                try
+                    set targetChat to first chat whose chat identifier is "{escaped_chat_identifier}"
+                end try
+                if targetChat is missing value then
+                    try
+                        set targetChat to first chat whose id is "{escaped_chat_identifier}"
+                    end try
+                end if
+                if targetChat is not missing value then
+                    send "{escaped_text}" to targetChat
+                end if
             end tell
             '''
-            subprocess.run(["osascript", "-e", script])
-            return
+            result = subprocess.run(
+                ["osascript", "-e", script],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                return
 
-        participants = chat.get("participants") or []
+        participants = chat.get("participant_handles") or []
         if participants:
-            self.send_imessage(participants[0], text)
+            self.send_imessage(str(participants[0]), text)
     
     MessageRow = Tuple[int, int, str, Optional[str], str, List[Dict[str, Any]]]
 
