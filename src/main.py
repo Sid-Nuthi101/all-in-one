@@ -6,12 +6,14 @@ from PySide6.QtWidgets import (
   QHBoxLayout,
   QLabel,
   QPushButton,
+  QComboBox,
   QScrollArea,
   QSplitter,
   QVBoxLayout,
   QWidget,
   QMainWindow,
   QSizePolicy,
+  QLineEdit,
 )
 
 from contacts import ContactsConnector
@@ -66,6 +68,21 @@ class MainWindow(QMainWindow):
     left_outer_layout.setContentsMargins(0, 0, 0, 0)
     left_outer_layout.setSpacing(0)
 
+    left_header = QWidget()
+    left_header.setObjectName("leftHeader")
+    left_header_layout = QHBoxLayout(left_header)
+    left_header_layout.setContentsMargins(12, 12, 12, 8)
+    left_header_layout.setSpacing(8)
+
+    self.note_button = QPushButton("✨ Note")
+    self.note_button.setObjectName("sparklyNoteButton")
+    self.note_button.setCursor(Qt.PointingHandCursor)
+    self.note_button.clicked.connect(self._toggle_note_overlay)
+
+    left_header_layout.addWidget(self.note_button)
+    left_header_layout.addStretch()
+    left_outer_layout.addWidget(left_header)
+
     left_scroll = QScrollArea()
     left_scroll.setObjectName("leftScroll")
     left_scroll.setWidgetResizable(True)
@@ -82,6 +99,36 @@ class MainWindow(QMainWindow):
 
     self.left_layout = left_layout
     self.left_scroll_contents = left_scroll_contents
+    self.left_container = left_container
+
+    self.note_overlay = QFrame(left_container)
+    self.note_overlay.setObjectName("noteOverlay")
+    self.note_overlay.setVisible(False)
+    self.note_overlay_layout = QVBoxLayout(self.note_overlay)
+    self.note_overlay_layout.setContentsMargins(16, 16, 16, 16)
+    self.note_overlay_layout.setSpacing(10)
+
+    overlay_title = QLabel("Sparkly note")
+    overlay_title.setObjectName("noteOverlayTitle")
+
+    self.note_recipient_dropdown = QComboBox()
+    self.note_recipient_dropdown.setObjectName("noteRecipientDropdown")
+    self.note_recipient_dropdown.addItems(
+      [
+        "Send to...",
+        "Alex Morgan",
+        "Design Team",
+        "Family Group",
+      ]
+    )
+
+    self.note_text_input = QLineEdit()
+    self.note_text_input.setObjectName("noteTextInput")
+    self.note_text_input.setPlaceholderText("What is it you'd like to send?")
+
+    self.note_overlay_layout.addWidget(overlay_title)
+    self.note_overlay_layout.addWidget(self.note_recipient_dropdown)
+    self.note_overlay_layout.addWidget(self.note_text_input)
 
     self.bridge = MessageBridge()
     chats = self._load_chats()
@@ -223,8 +270,68 @@ class MainWindow(QMainWindow):
         color: rgba(255, 255, 255, 0.6);
         font-size: 12px;
       }
+      QWidget#leftHeader {
+        background-color: rgba(255, 255, 255, 0.04);
+      }
+      QPushButton#sparklyNoteButton {
+        background-color: rgba(139, 92, 246, 0.25);
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        color: #ffffff;
+        border-radius: 12px;
+        padding: 6px 12px;
+        font-weight: 600;
+      }
+      QPushButton#sparklyNoteButton:hover {
+        background-color: rgba(139, 92, 246, 0.4);
+      }
+      QFrame#noteOverlay {
+        background-color: rgba(20, 20, 24, 0.96);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 16px;
+      }
+      QLabel#noteOverlayTitle {
+        color: #ffffff;
+        font-weight: 600;
+      }
+      QComboBox#noteRecipientDropdown,
+      QLineEdit#noteTextInput {
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+        border-radius: 10px;
+        padding: 6px 10px;
+      }
+      QComboBox#noteRecipientDropdown::drop-down {
+        border: none;
+        width: 20px;
+      }
+      QComboBox#noteRecipientDropdown QAbstractItemView {
+        background-color: rgba(20, 20, 24, 0.98);
+        color: #ffffff;
+        selection-background-color: rgba(139, 92, 246, 0.5);
+      }
       """
     )
+
+  def resizeEvent(self, event):
+    super().resizeEvent(event)
+    self._position_note_overlay()
+
+  def _position_note_overlay(self):
+    if not self.note_overlay:
+      return
+    left_width = self.left_container.width()
+    overlay_width = max(220, left_width - 24)
+    self.note_overlay.setFixedWidth(overlay_width)
+    self.note_overlay.adjustSize()
+    self.note_overlay.move(12, 52)
+
+  def _toggle_note_overlay(self):
+    is_visible = self.note_overlay.isVisible()
+    self.note_overlay.setVisible(not is_visible)
+    if not is_visible:
+      self.note_overlay.raise_()
+      self._position_note_overlay()
 
   def on_run(self):
     self.output.append(get_status())
