@@ -109,8 +109,15 @@ class MessageBridge:
         """, (limit,))
         rows = self.cur.fetchall()
 
-        handles = [row[6] for row in rows if row[4] == 0 and row[6]]
-        ContactsConnector.build_index_for_handles(handles)
+        chat_ids = [row[0] for row in rows]
+        participant_handles: Dict[int, List[str]] = {}
+        all_handles: List[str] = [row[6] for row in rows if row[4] == 0 and row[6]]
+        for chat_id in chat_ids:
+            handles = self._chat_participants(chat_id)
+            participant_handles[chat_id] = handles
+            all_handles.extend(handles)
+
+        ContactsConnector.build_index_for_handles(all_handles)
 
         chats: List[Dict[str, Optional[str]]] = []
         for chat_id, display_name, chat_identifier, date_val, is_from_me, text, handle in rows:
@@ -119,6 +126,16 @@ class MessageBridge:
             preview = " ".join((text or "").split()) or "No message"
             time_str = dt.strftime("%I:%M %p").lstrip("0") if dt else ""
             initials = "".join([part[0] for part in name.split()[:2]]).upper() or "?"
+            seen_participants = set()
+            participant_names = []
+            for h in participant_handles.get(chat_id, []):
+                if not h:
+                    continue
+                name_val = ContactsConnector.get_contact_name(h) or h or "Unknown"
+                if name_val in seen_participants:
+                    continue
+                seen_participants.add(name_val)
+                participant_names.append(name_val)
             chats.append(
                 {
                     "id": str(chat_id),
@@ -127,10 +144,20 @@ class MessageBridge:
                     "preview": preview,
                     "initials": initials,
                     "is_from_me": "1" if is_from_me else "0",
+                    "participants": participant_names,
                 }
             )
 
         return chats
+
+    def _chat_participants(self, chat_id: int) -> List[str]:
+        self.cur.execute("""
+            SELECT DISTINCT h.id
+            FROM chat_handle_join chj
+            JOIN handle h ON h.ROWID = chj.handle_id
+            WHERE chj.chat_id = ?
+        """, (chat_id,))
+        return [row[0] for row in self.cur.fetchall() if row[0]]
     
     # Sends a Imessage message 
     def send_imessage(self, phone_or_email, text):

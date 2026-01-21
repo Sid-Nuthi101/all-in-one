@@ -1,5 +1,5 @@
 import sys
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
   QApplication,
   QFrame,
@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
   QSizePolicy,
 )
 
+from contacts import ContactsConnector
 from messages import MessageBridge
 from logic import get_status
 
@@ -182,6 +183,18 @@ class MainWindow(QMainWindow):
       QLabel#messageText {
         color: #ffffff;
       }
+      QLabel#senderName {
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 12px;
+        font-weight: 500;
+      }
+      QLabel#senderAvatar {
+        background-color: rgba(255, 255, 255, 0.18);
+        color: #ffffff;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 600;
+      }
       #chatRow{
         max-height: 56px;
         border-radius: 6px;
@@ -194,6 +207,10 @@ class MainWindow(QMainWindow):
       }
       #chatRow[selected="true"] QLabel {
         color: #ffffff;
+      }
+      QLabel#participantNames {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 12px;
       }
       """
     )
@@ -232,9 +249,17 @@ class MainWindow(QMainWindow):
     top_layout.addStretch()
     top_layout.addWidget(time)
 
+    participants = chat.get("participants") or []
+    participant_label = None
+    if len(participants) > 1:
+      participant_label = ElidedLabel(", ".join(participants))
+      participant_label.setObjectName("participantNames")
+
     preview = ElidedLabel(chat["preview"])
 
     text_layout.addWidget(top_row)
+    if participant_label:
+      text_layout.addWidget(participant_label)
     text_layout.addWidget(preview)
 
     row_layout.addWidget(avatar)
@@ -274,11 +299,21 @@ class MainWindow(QMainWindow):
       if spacer is not None:
         del spacer
 
-  def _build_message_bubble(self, message):
+  def _build_message_bubble(self, message, avatar_slot_width):
     wrapper = QWidget()
     wrapper_layout = QHBoxLayout(wrapper)
     wrapper_layout.setContentsMargins(0, 0, 0, 0)
-    wrapper_layout.setSpacing(0)
+    wrapper_layout.setSpacing(8)
+
+    content = QWidget()
+    content_layout = QVBoxLayout(content)
+    content_layout.setContentsMargins(0, 0, 0, 0)
+    content_layout.setSpacing(4)
+
+    if message.get("show_sender_name"):
+      sender = QLabel(message.get("sender_name", "Unknown"))
+      sender.setObjectName("senderName")
+      content_layout.addWidget(sender)
 
     bubble = QFrame()
     bubble.setObjectName("messageBubble")
@@ -295,12 +330,26 @@ class MainWindow(QMainWindow):
     text.setMaximumWidth(420)
 
     bubble_layout.addWidget(text)
+    content_layout.addWidget(bubble)
+
+    avatar = None
+    if message.get("show_avatar"):
+      avatar = QLabel(message.get("avatar_initials", "?"))
+      avatar.setObjectName("senderAvatar")
+      avatar.setAlignment(Qt.AlignCenter)
+      avatar.setFixedSize(32, 32)
 
     if message["is_from_me"]:
       wrapper_layout.addStretch()
-      wrapper_layout.addWidget(bubble)
+      wrapper_layout.addWidget(content)
     else:
-      wrapper_layout.addWidget(bubble)
+      if avatar:
+        wrapper_layout.addWidget(avatar)
+      else:
+        spacer = QWidget()
+        spacer.setFixedSize(avatar_slot_width, avatar_slot_width)
+        wrapper_layout.addWidget(spacer)
+      wrapper_layout.addWidget(content)
       wrapper_layout.addStretch()
 
     return wrapper
@@ -308,24 +357,62 @@ class MainWindow(QMainWindow):
   def _load_messages(self, chat):
     self._clear_layout(self.message_layout)
     messages = []
+    participants = chat.get("participants") or []
+    is_group_chat = len(participants) > 1
     if self.bridge and "id" in chat:
       chat_id = int(chat["id"])
       rows = self.bridge.last_messages_in_chat(chat_id, limit=60) # load messages
-      for date_val, is_from_me, text, handle, kind in reversed(rows):
+      chronological_rows = list(reversed(rows))
+      handles = [handle for _, is_from_me, _, handle, _ in chronological_rows if not is_from_me and handle]
+      if handles:
+        ContactsConnector.build_index_for_handles(handles)
+
+      for index, (date_val, is_from_me, text, handle, kind) in enumerate(chronological_rows):
         normalized_text = (text or "").strip()
         if not normalized_text:
           normalized_text = "Shared an attachment."
+        sender_name = None
+        show_sender_name = False
+        show_avatar = False
+        avatar_initials = None
+        if is_group_chat and not is_from_me:
+          sender_name = ContactsConnector.get_contact_name(handle) or handle or "Unknown"
+          previous = chronological_rows[index - 1] if index > 0 else None
+          next_row = chronological_rows[index + 1] if index + 1 < len(chronological_rows) else None
+          prev_same_sender = (
+            previous is not None
+            and not previous[1]
+            and previous[3] == handle
+          )
+          next_same_sender = (
+            next_row is not None
+            and not next_row[1]
+            and next_row[3] == handle
+          )
+          show_sender_name = not prev_same_sender
+          show_avatar = not next_same_sender
+          avatar_initials = "".join([part[0] for part in sender_name.split()[:2]]).upper() or "?"
         messages.append(
           {
-            "text": text or "",
+            "text": normalized_text,
             "is_from_me": bool(is_from_me),
             "handle": handle,
             "date": date_val,
+            "show_sender_name": show_sender_name,
+            "show_avatar": show_avatar,
+            "sender_name": sender_name,
+            "avatar_initials": avatar_initials,
           }
         )
+    avatar_slot_width = 32
     for message in messages:
-      self.message_layout.addWidget(self._build_message_bubble(message))
+      self.message_layout.addWidget(self._build_message_bubble(message, avatar_slot_width))
     self.message_layout.addStretch()
+    QTimer.singleShot(0, self._scroll_messages_to_bottom)
+
+  def _scroll_messages_to_bottom(self):
+    scroll_bar = self.message_scroll.verticalScrollBar()
+    scroll_bar.setValue(scroll_bar.maximum())
 
   def _load_chats(self):
     bridge = MessageBridge()
