@@ -92,8 +92,9 @@ class MessageBridge:
         self.cur.execute("""
             SELECT
                 c.ROWID AS chat_id,
-                c.display_name,
+                c.guid,
                 c.chat_identifier,
+                c.display_name,
                 m.date,
                 m.is_from_me,
                 COALESCE(m.text, '') AS text,
@@ -115,7 +116,7 @@ class MessageBridge:
 
         chat_ids = [row[0] for row in rows]
         participant_handles: Dict[int, List[str]] = {}
-        all_handles: List[str] = [row[6] for row in rows if row[4] == 0 and row[6]]
+        all_handles: List[str] = [row[7] for row in rows if row[5] == 0 and row[7]]
         for chat_id in chat_ids:
             handles = self._chat_participants(chat_id)
             participant_handles[chat_id] = handles
@@ -124,7 +125,7 @@ class MessageBridge:
         ContactsConnector.build_index_for_handles(all_handles)
 
         chats: List[Dict[str, Any]] = []
-        for chat_id, display_name, chat_identifier, date_val, is_from_me, text, handle in rows:
+        for chat_id, guid, chat_identifier, display_name, date_val, is_from_me, text, handle in rows:
             dt = self.apple_time_to_dt(date_val)
             name = display_name or ContactsConnector.get_contact_name(handle) or handle or chat_identifier or "Unknown"
             preview = " ".join((text or "").split()) or "No message"
@@ -144,6 +145,7 @@ class MessageBridge:
             chats.append(
                 {
                     "id": str(chat_id),
+                    "guid": guid,
                     "name": name,
                     "time": time_str,
                     "preview": preview,
@@ -177,38 +179,29 @@ class MessageBridge:
         '''
         subprocess.run(["osascript", "-e", script])
 
-    def send_message_to_chat(self, chat: Dict[str, Any], text: str) -> None:
-        chat_identifier = chat.get("chat_identifier")
+    def send_imessage_to_chat(self, chat_identifier: str, text: str) -> None:
         escaped_text = self._escape_applescript_string(text)
-        if chat_identifier:
-            escaped_chat_identifier = self._escape_applescript_string(chat_identifier)
-            script = f'''
-            tell application "Messages"
-                set targetChat to missing value
-                try
-                    set targetChat to first chat whose chat identifier is "{escaped_chat_identifier}"
-                end try
-                if targetChat is missing value then
-                    try
-                        set targetChat to first chat whose id is "{escaped_chat_identifier}"
-                    end try
-                end if
-                if targetChat is not missing value then
-                    send "{escaped_text}" to targetChat
-                end if
-            end tell
-            '''
-            result = subprocess.run(
-                ["osascript", "-e", script],
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                return
+        escaped_chat = self._escape_applescript_string(chat_identifier)
+        script = f'''
+        tell application "Messages"
+            set targetChat to first chat whose id is "{escaped_chat}"
+            send "{escaped_text}" to targetChat
+        end tell
+        '''
+        subprocess.run(["osascript", "-e", script], check=True)
 
+    def send_message_to_chat(self, chat: Dict[str, Any], text: str) -> None:
         participants = chat.get("participant_handles") or []
-        if participants:
+        if len(participants) == 1:
             self.send_imessage(str(participants[0]), text)
+            return
+
+        chat_identifier = chat.get("chat_identifier")
+        print("sending to chat_identifier:", chat_identifier)
+        if not chat_identifier:
+            raise ValueError("Missing chat_identifier (expected chat.chat_identifier from DB)")
+
+        self.send_imessage_to_chat(str(chat_identifier), text)
     
     MessageRow = Tuple[int, int, str, Optional[str], str, List[Dict[str, Any]]]
 
