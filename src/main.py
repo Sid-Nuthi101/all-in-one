@@ -293,8 +293,6 @@ class MainWindow(QMainWindow):
     for chat_row in self.chat_rows:
       self._set_row_selected(chat_row, chat_row is row)
     self.current_chat = chat
-    self.current_message_snapshot = []
-    self._render_messages([])
     self._load_messages(chat)
 
   def _set_row_selected(self, row, selected):
