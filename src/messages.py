@@ -4,8 +4,8 @@ import shutil
 import sqlite3
 from datetime import datetime
 from contacts import ContactsConnector
-from typing import Dict, List, Optional, Tuple
-
+from typing import Any, Dict, List, Optional, Tuple
+from Foundation import NSData, NSKeyedUnarchiver  # type: ignore
 
 APPLE_EPOCH = 978307200  # seconds between 1970-01-01 and 2001-01-01
 
@@ -140,26 +140,165 @@ class MessageBridge:
         end tell
         '''
         subprocess.run(["osascript", "-e", script])
+    
+    MessageRow = Tuple[int, int, str, Optional[str], str, List[Dict[str, Any]]]
+
+    def _text_from_attributed_body(self, blob: Optional[bytes]) -> str:
+        """
+        Decode Messages' message.attributedBody (often a 'typedstream' archive).
+        Tries:
+            1) NSUnarchiver (typedstream)
+            2) NSKeyedUnarchiver (keyed)
+            3) best-effort byte pattern extraction
+        """
+        if not blob:
+            return ""
+
+        # Ensure it's bytes (sqlite can sometimes hand back memoryview)
+        if isinstance(blob, memoryview):
+            blob = blob.tobytes()
+
+        # 1) Typedstream path (your blobs: b'\\x04\\x0bstreamtyped...')
+        try:
+            from Foundation import NSData, NSUnarchiver  # type: ignore
+
+            data = NSData.dataWithBytes_length_(blob, len(blob))
+            obj = NSUnarchiver.unarchiveObjectWithData_(data)
+            if obj is not None and hasattr(obj, "string"):
+                return str(obj.string())
+        except Exception:
+            pass
+
+        # 2) Keyed-archive fallback (some macOS versions / other blobs)
+        try:
+            from Foundation import NSData, NSKeyedUnarchiver  # type: ignore
+
+            data = NSData.dataWithBytes_length_(blob, len(blob))
+            obj = NSKeyedUnarchiver.unarchiveObjectWithData_(data)
+            if obj is not None and hasattr(obj, "string"):
+                return str(obj.string())
+        except Exception:
+            pass
+
+        # 3) Best-effort fallback:
+        # Many blobs embed text as: b"\\x01+" + <1 byte length> + <utf8 bytes>
+        try:
+            marker = b"\x01+"
+            i = blob.find(marker)
+            if i != -1 and i + 3 <= len(blob):
+                n = blob[i + 2]
+                start = i + 3
+                end = start + n
+                if end <= len(blob):
+                    return blob[start:end].decode("utf-8", errors="ignore")
+        except Exception:
+            pass
+
+        return ""
+
+    def last_messages_in_chat(
+        self,
+        chat_rowid: int,
+        limit: int = 100,
+    ) -> List[MessageRow]:
+        """
+        Returns last N messages for a single conversation (chat ROWID).
+
+        Each row:
+        (date, is_from_me, text, handle, kind)
+
+        kind:
+        - "text"
+        - "attachment"  (pure attachment bubble with no visible text)
+        - "reaction"    (tapback)
+        - "unknown"
+        """
+        TAPBACK_TYPES = set(range(2000, 2006)) | set(range(3000, 3006))
+
+        self.cur.execute("""
+        SELECT
+            m.ROWID AS message_rowid,
+            m.date,
+            m.is_from_me,
+            m.text,
+            m.attributedBody,
+            h.id AS handle,
+            m.cache_has_attachments,
+            m.associated_message_type
+        FROM chat_message_join cmj
+        JOIN message m ON m.ROWID = cmj.message_id
+        LEFT JOIN handle h ON h.ROWID = m.handle_id
+        WHERE cmj.chat_id = ?
+        ORDER BY m.date DESC
+        LIMIT ?;
+        """, (chat_rowid, limit))
+        rows = self.cur.fetchall()
+
+        out: List[MessageRow] = []
+
+        for (
+        message_rowid,
+        date,
+        is_from_me,
+        text,
+        attributed_body,
+        handle,
+        cache_has_attachments,
+        associated_message_type,
+        ) in rows:
+            raw_text = (text or "")
+            if not raw_text.strip() and attributed_body:
+                raw_text = self._text_from_attributed_body(attributed_body)
+
+            raw_text = raw_text or ""
+            is_placeholder = (raw_text == "￼")
+
+            # Normalize assoc type: some DBs store 0 instead of NULL
+            assoc_type = associated_message_type
+            if assoc_type == 0:
+                assoc_type = None
+
+            is_tapback = (assoc_type in TAPBACK_TYPES)
+
+            has_attachments = (cache_has_attachments == 1)
+
+            kind = "text"
+            normalized_text = raw_text
+
+            if is_tapback:
+                kind = "reaction"
+                # For tapbacks you usually don't want to show any body text
+                normalized_text = "Reaction"
+
+            elif has_attachments:
+                # Link previews can set attachments but still have real text.
+                # Only call it an attachment bubble if there isn't visible text.
+                if (not normalized_text.strip()) or is_placeholder:
+                    kind = "attachment"
+                    normalized_text = "Attachment"
+                else:
+                    kind = "text"
+
+            elif (not normalized_text.strip()) or is_placeholder:
+                kind = "unknown"
+                normalized_text = "Unknown"
+
+            out.append((
+                int(date),
+                int(is_from_me or 0),
+                normalized_text,
+                handle,
+                kind,
+            ))
+
+        return out
 
     def last_100_messages_in_chat(self, chat_rowid: int) -> List[Tuple[int, int, str, Optional[str]]]:
         """
         Returns last 100 messages for a single conversation (chat ROWID).
         Each row: (date, is_from_me, text, handle)
         """
-        self.cur.execute("""
-            SELECT
-                m.date,
-                m.is_from_me,
-                COALESCE(m.text, '') AS text,
-                h.id AS handle
-            FROM chat_message_join cmj
-            JOIN message m ON m.ROWID = cmj.message_id
-            LEFT JOIN handle h ON h.ROWID = m.handle_id
-            WHERE cmj.chat_id = ?
-            ORDER BY m.date DESC
-            LIMIT 100
-        """, (chat_rowid,))
-        return self.cur.fetchall()
+        return self.last_messages_in_chat(chat_rowid, limit=100)
 
     def last_100_messages_for_latest_conversations(self, x: int) -> Dict[int, List[Tuple[int, int, str, Optional[str]]]]:
         """
@@ -200,7 +339,7 @@ class MessageBridge:
 
         out: Dict[int, List[Tuple[int, int, str, Optional[str]]]] = {}
         for chat_id in chat_ids:
-            out[chat_id] = self.last_100_messages_in_chat(chat_id)
+            out[chat_id] = self.last_messages_in_chat(chat_id, limit=100)
 
         return out
 
