@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
   QFrame,
   QHBoxLayout,
   QLabel,
+  QLineEdit,
   QPushButton,
   QScrollArea,
   QSplitter,
@@ -133,6 +134,29 @@ class MainWindow(QMainWindow):
     self.message_layout.setSpacing(12)
     self.message_layout.setAlignment(Qt.AlignTop)
 
+    composer = QWidget()
+    composer.setObjectName("messageComposer")
+    composer_layout = QHBoxLayout(composer)
+    composer_layout.setContentsMargins(16, 12, 16, 16)
+    composer_layout.setSpacing(10)
+
+    self.message_input = QLineEdit()
+    self.message_input.setObjectName("messageInput")
+    self.message_input.setPlaceholderText("Send a message")
+
+    self.parse_toggle = QPushButton("✨ Parse with AI")
+    self.parse_toggle.setObjectName("parseToggle")
+    self.parse_toggle.setCheckable(True)
+
+    self.send_button = QPushButton("Send")
+    self.send_button.setObjectName("sendButton")
+
+    composer_layout.addWidget(self.message_input, 1)
+    composer_layout.addWidget(self.parse_toggle)
+    composer_layout.addWidget(self.send_button)
+
+    right_layout.addWidget(composer)
+
     self.splitter.addWidget(left_container)
     self.splitter.addWidget(right_container)
     self.splitter.setStretchFactor(0, 1)
@@ -174,6 +198,42 @@ class MainWindow(QMainWindow):
       }
       QPushButton#infoButton:hover {
         background-color: rgba(255, 255, 255, 0.25);
+      }
+      QWidget#messageComposer {
+        background-color: rgba(6, 8, 20, 0.85);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      QLineEdit#messageInput {
+        background-color: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        color: #ffffff;
+        padding: 8px 12px;
+      }
+      QLineEdit#messageInput:focus {
+        border: 1px solid rgba(139, 92, 246, 0.7);
+      }
+      QPushButton#parseToggle {
+        background-color: rgba(139, 92, 246, 0.18);
+        border: 1px solid rgba(139, 92, 246, 0.5);
+        color: #ffffff;
+        border-radius: 14px;
+        padding: 8px 14px;
+      }
+      QPushButton#parseToggle:checked {
+        background-color: rgba(139, 92, 246, 0.5);
+        border: 1px solid rgba(236, 72, 153, 0.8);
+      }
+      QPushButton#sendButton {
+        background-color: rgba(74, 108, 247, 0.7);
+        border: 1px solid rgba(74, 108, 247, 0.9);
+        color: #ffffff;
+        border-radius: 14px;
+        padding: 8px 16px;
+        font-weight: 600;
+      }
+      QPushButton#sendButton:hover {
+        background-color: rgba(74, 108, 247, 0.9);
       }
       QScrollArea#messageScroll {
         background-color: transparent;
