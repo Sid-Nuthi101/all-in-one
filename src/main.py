@@ -391,50 +391,13 @@ class MainWindow(QMainWindow):
     is_group_chat = len(participants) > 1
     if self.bridge and "id" in chat:
       chat_id = int(chat["id"])
-      rows = self.bridge.last_messages_in_chat(chat_id, limit=60) # load messages
-      chronological_rows = list(reversed(rows))
-      handles = [handle for _, is_from_me, _, handle, _ in chronological_rows if not is_from_me and handle]
-      if handles:
-        ContactsConnector.build_index_for_handles(handles)
+      rows = self.bridge.last_messages_in_chat(chat_id, limit=60)  # load messages
+      self.current_message_snapshot = self._get_message_snapshot(rows)
+      messages = self._build_message_payload(rows)
+    self._render_messages(messages)
 
-      for index, (date_val, is_from_me, text, handle, kind) in enumerate(chronological_rows):
-        normalized_text = (text or "").strip()
-        if not normalized_text:
-          normalized_text = "Shared an attachment."
-        sender_name = None
-        show_sender_name = False
-        show_avatar = False
-        avatar_initials = None
-        if is_group_chat and not is_from_me:
-          sender_name = ContactsConnector.get_contact_name(handle) or handle or "Unknown"
-          previous = chronological_rows[index - 1] if index > 0 else None
-          next_row = chronological_rows[index + 1] if index + 1 < len(chronological_rows) else None
-          prev_same_sender = (
-            previous is not None
-            and not previous[1]
-            and previous[3] == handle
-          )
-          next_same_sender = (
-            next_row is not None
-            and not next_row[1]
-            and next_row[3] == handle
-          )
-          show_sender_name = not prev_same_sender
-          show_avatar = not next_same_sender
-          avatar_initials = "".join([part[0] for part in sender_name.split()[:2]]).upper() or "?"
-        messages.append(
-          {
-            "text": normalized_text,
-            "is_from_me": bool(is_from_me),
-            "handle": handle,
-            "date": date_val,
-            "show_sender_name": show_sender_name,
-            "show_avatar": show_avatar,
-            "sender_name": sender_name,
-            "avatar_initials": avatar_initials,
-          }
-        )
-    avatar_slot_width = 32
+  def _render_messages(self, messages):
+    self._clear_layout(self.message_layout)
     for message in messages:
       self.message_layout.addWidget(self._build_message_bubble(message, avatar_slot_width))
     self.message_layout.addStretch()
