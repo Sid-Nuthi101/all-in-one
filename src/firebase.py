@@ -60,6 +60,7 @@ def upsert_user(
     *,
     now_fn: Optional[Callable[[], datetime]] = None,
     on_first_login: Optional[Callable[[str], None]] = None,
+    on_login: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, Any]:
     if "apple_sub" not in apple_user:
         raise ValueError("apple_user must include apple_sub")
@@ -99,6 +100,9 @@ def upsert_user(
 
     if is_first_login and on_first_login is not None:
         on_first_login(apple_sub)
+
+    if on_login is not None:
+        on_login(apple_sub)
 
     result: Dict[str, Any] = {"apple_sub": apple_sub}
     if isinstance(existing, dict):

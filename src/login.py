@@ -134,6 +134,7 @@ def login_with_apple(
     token_exchange: Optional[Callable[..., Dict[str, Any]]] = None,
     jwt_decoder: Optional[Callable[..., Dict[str, Any]]] = None,
     on_first_login: Optional[Callable[[str], None]] = None,
+    on_login: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, Any]:
     exchange_fn = token_exchange or exchange_code_for_tokens
     token_response = exchange_fn(
@@ -156,4 +157,5 @@ def login_with_apple(
         apple_user,
         now_fn=now_fn,
         on_first_login=on_first_login,
+        on_login=on_login,
     )

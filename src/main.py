@@ -1,10 +1,14 @@
 import sys
-from PySide6.QtCore import Qt
+from typing import Callable, Optional
+
+from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtWidgets import (
   QApplication,
   QFrame,
   QHBoxLayout,
+  QDialog,
   QLabel,
+  QProgressBar,
   QPushButton,
   QScrollArea,
   QSplitter,
@@ -38,9 +42,48 @@ class ElidedLabel(QLabel):
     super().setText(elided)
 
 
-class MainWindow(QMainWindow):
-  def __init__(self):
+class TrainingDialog(QDialog):
+  def __init__(self, parent=None):
+    super().__init__(parent)
+    self.setWindowTitle("Training")
+    self.setModal(True)
+    self.setFixedWidth(360)
+
+    layout = QVBoxLayout(self)
+    layout.setContentsMargins(20, 20, 20, 20)
+    layout.setSpacing(12)
+
+    self.label = QLabel("Training your model for the first time…")
+    self.label.setWordWrap(True)
+    layout.addWidget(self.label)
+
+    self.progress = QProgressBar()
+    self.progress.setRange(0, 0)
+    self.progress.setTextVisible(False)
+    layout.addWidget(self.progress)
+
+
+class TrainingWorker(QThread):
+  completed = Signal(object)
+  failed = Signal(Exception)
+
+  def __init__(self, training_fn: Callable[[], object]):
     super().__init__()
+    self._training_fn = training_fn
+
+  def run(self):
+    try:
+      result = self._training_fn()
+      self.completed.emit(result)
+    except Exception as exc:
+      self.failed.emit(exc)
+
+
+class MainWindow(QMainWindow):
+  def __init__(self, training_fn: Optional[Callable[[], object]] = None):
+    super().__init__()
+    self._training_dialog: Optional[TrainingDialog] = None
+    self._training_worker: Optional[TrainingWorker] = None
 
     self.setWindowTitle("")
     self.setWindowFlags(Qt.WindowMinMaxButtonsHint)
@@ -198,6 +241,9 @@ class MainWindow(QMainWindow):
       """
     )
 
+    if training_fn is not None:
+      self.run_training_with_popup(training_fn)
+
   def on_run(self):
     self.output.append(get_status())
 
@@ -331,6 +377,25 @@ class MainWindow(QMainWindow):
     bridge = MessageBridge()
     chats = bridge.top_chats(limit=50)
     return chats
+
+  def show_training_popup(self):
+    if self._training_dialog is None:
+      self._training_dialog = TrainingDialog(self)
+    self._training_dialog.show()
+    self._training_dialog.raise_()
+    self._training_dialog.activateWindow()
+
+  def hide_training_popup(self):
+    if self._training_dialog is not None:
+      self._training_dialog.close()
+
+  def run_training_with_popup(self, training_fn: Callable[[], object]):
+    self.show_training_popup()
+    worker = TrainingWorker(training_fn)
+    worker.completed.connect(lambda _: self.hide_training_popup())
+    worker.failed.connect(lambda _: self.hide_training_popup())
+    self._training_worker = worker
+    worker.start()
 
 
 def main():

@@ -70,6 +70,32 @@ def test_upsert_user_does_not_overwrite_optional_fields(
     doc_ref.delete()
 
 
+def test_upsert_user_invokes_on_login_callback(
+    firestore_client, test_apple_sub
+):
+    doc_ref = firestore_client.collection(firebase.USERS_COLLECTION).document(
+        test_apple_sub
+    )
+    doc_ref.delete()
+
+    calls: list[str] = []
+
+    firebase.upsert_user(
+        firestore_client,
+        {"apple_sub": test_apple_sub},
+        on_login=lambda user_id: calls.append(user_id),
+    )
+    firebase.upsert_user(
+        firestore_client,
+        {"apple_sub": test_apple_sub},
+        on_login=lambda user_id: calls.append(user_id),
+    )
+
+    assert calls == [test_apple_sub, test_apple_sub]
+
+    doc_ref.delete()
+
+
 def test_firestore_metadata_store_roundtrip(
     firestore_client, test_apple_sub
 ):

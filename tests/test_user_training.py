@@ -47,6 +47,36 @@ def test_first_login_trainer_skips_when_model_ready():
         message_bridge_factory=fail_bridge_factory,
     )
 
-    result = trainer.train(user_id="user-1", limit=5000, now=created_at)
+    outcome = trainer.train_if_untrained(user_id="user-1", limit=5000, now=created_at)
 
-    assert result.openai_fine_tuned_model_id == "ft-model"
+    assert outcome.was_trained is False
+    assert outcome.metadata.openai_fine_tuned_model_id == "ft-model"
+
+
+def test_first_login_trainer_skips_when_metadata_succeeded_without_state():
+    store = InMemoryMetadataStore()
+    created_at = datetime(2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
+    metadata = ModelMetadata(
+        user_id="user-2",
+        version=1,
+        base_model="gpt-4o-mini",
+        status="succeeded",
+        created_at=created_at,
+        completed_at=created_at,
+        openai_fine_tuned_model_id="ft-model-2",
+    )
+    store.create_model_metadata(metadata)
+
+    def fail_bridge_factory():
+        raise AssertionError("message bridge should not be created when model exists")
+
+    trainer = FirstLoginTrainer(
+        openai_client=_FailingOpenAIClient(),
+        metadata_store=store,
+        message_bridge_factory=fail_bridge_factory,
+    )
+
+    outcome = trainer.train_if_untrained(user_id="user-2", limit=5000, now=created_at)
+
+    assert outcome.was_trained is False
+    assert outcome.metadata.openai_fine_tuned_model_id == "ft-model-2"
