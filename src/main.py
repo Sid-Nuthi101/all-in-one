@@ -571,6 +571,13 @@ class MainWindow(QMainWindow):
     wrapper_layout.setContentsMargins(0, 0, 0, 0)
     wrapper_layout.setSpacing(8)
 
+    avatar_slot = QWidget()
+    avatar_slot.setFixedWidth(avatar_slot_width)
+    avatar_layout = QVBoxLayout(avatar_slot)
+    avatar_layout.setContentsMargins(0, 0, 0, 0)
+    avatar_layout.setSpacing(0)
+    avatar_layout.addStretch()
+
     content = QWidget()
     content_layout = QVBoxLayout(content)
     content_layout.setContentsMargins(0, 0, 0, 0)
@@ -598,23 +605,18 @@ class MainWindow(QMainWindow):
     bubble_layout.addWidget(text)
     content_layout.addWidget(bubble)
 
-    avatar = None
     if message.get("show_avatar"):
       avatar = QLabel(message.get("avatar_initials", "?"))
       avatar.setObjectName("senderAvatar")
       avatar.setAlignment(Qt.AlignCenter)
       avatar.setFixedSize(32, 32)
+      avatar_layout.addWidget(avatar, alignment=Qt.AlignLeft | Qt.AlignBottom)
 
     if message["is_from_me"]:
       wrapper_layout.addStretch()
       wrapper_layout.addWidget(content)
     else:
-      if avatar:
-        wrapper_layout.addWidget(avatar)
-      else:
-        spacer = QWidget()
-        spacer.setFixedSize(avatar_slot_width, avatar_slot_width)
-        wrapper_layout.addWidget(spacer)
+      wrapper_layout.addWidget(avatar_slot)
       wrapper_layout.addWidget(content)
       wrapper_layout.addStretch()
 
@@ -624,19 +626,44 @@ class MainWindow(QMainWindow):
     return [(date_val, is_from_me, text, handle) for date_val, is_from_me, text, handle, _kind in rows]
 
   def _build_message_payload(self, rows):
+    handles = [handle for _date, is_from_me, _text, handle, _kind in rows if not is_from_me and handle]
+    if handles:
+      ContactsConnector.build_index_for_handles(handles)
+
     messages = []
     for date_val, is_from_me, text, handle, _kind in reversed(rows):
       normalized_text = (text or "").strip()
       if not normalized_text:
         normalized_text = "Shared an attachment."
+      if is_from_me:
+        sender_name = "You"
+        sender_key = "me"
+      else:
+        sender_name = ContactsConnector.get_contact_name(handle) or handle or "Unknown"
+        sender_key = handle or sender_name
+      initials = "".join([part[0] for part in sender_name.split()[:2]]).upper() or "?"
       messages.append(
         {
           "text": text or normalized_text,
           "is_from_me": bool(is_from_me),
           "handle": handle,
           "date": date_val,
+          "sender_name": sender_name,
+          "sender_key": sender_key,
+          "avatar_initials": initials,
         }
       )
+
+    for index, message in enumerate(messages):
+      if message["is_from_me"]:
+        message["show_sender_name"] = False
+        message["show_avatar"] = False
+        continue
+      previous_sender = messages[index - 1]["sender_key"] if index > 0 else None
+      next_sender = messages[index + 1]["sender_key"] if index < len(messages) - 1 else None
+      message["show_sender_name"] = message["sender_key"] != previous_sender
+      message["show_avatar"] = message["sender_key"] != next_sender
+
     return messages
 
   def _load_messages(self, chat):
