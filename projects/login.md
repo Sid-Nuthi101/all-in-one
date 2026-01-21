@@ -183,6 +183,21 @@ request = login.create_apple_auth_request(
 Then call `ensure_user_logged_in` to keep the user logged in by reusing the stored
 `apple_sub` and only prompting when no session exists.
 
+### Desktop App Environment Variables
+
+The PySide desktop app reads these variables to configure Sign in with Apple + Firebase:
+
+```bash
+export FIREBASE_PROJECT_ID="your-project-id"
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
+export APPLE_CLIENT_ID="com.example.service"
+export APPLE_CLIENT_SECRET="your-apple-client-secret-jwt"
+export APPLE_REDIRECT_URI="https://example.com/callback"
+```
+
+If these are set, the app will show a **Sign in with Apple** button and prompt for the
+authorization code to complete the Firebase-backed login.
+
 ## Testing Requirement
 
 - Time must be mockable in unit tests

@@ -1,10 +1,17 @@
+import os
 import sys
+import webbrowser
+from pathlib import Path
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
   QApplication,
+  QDialog,
+  QFormLayout,
   QFrame,
   QHBoxLayout,
   QLabel,
+  QLineEdit,
+  QMessageBox,
   QPushButton,
   QScrollArea,
   QSplitter,
@@ -15,8 +22,10 @@ from PySide6.QtWidgets import (
 )
 
 from contacts import ContactsConnector
+import login
 from messages import MessageBridge
 from logic import get_status
+from session_store import FileSessionStore
 
 
 class ElidedLabel(QLabel):
@@ -225,6 +234,7 @@ class MainWindow(QMainWindow):
       }
       """
     )
+
 
   def on_run(self):
     self.output.append(get_status())
@@ -451,8 +461,123 @@ class MainWindow(QMainWindow):
     return chats
 
 
+class SignInDialog(QDialog):
+  def __init__(self, auth_request, parent=None):
+    super().__init__(parent)
+    self.setWindowTitle("Sign in with Apple")
+    self.setModal(True)
+    self._result = None
+
+    layout = QVBoxLayout(self)
+    instructions = QLabel(
+      "Sign in with Apple to continue. You'll be redirected to the Apple sign-in page."
+    )
+    instructions.setWordWrap(True)
+    layout.addWidget(instructions)
+
+    button = QPushButton("Sign in with Apple")
+    button.clicked.connect(lambda: webbrowser.open(auth_request["authorization_url"]))
+    layout.addWidget(button)
+
+    form = QFormLayout()
+    self.code_input = QLineEdit()
+    self.code_input.setPlaceholderText("Paste authorization code")
+    form.addRow("Authorization code", self.code_input)
+
+    self.first_name_input = QLineEdit()
+    self.first_name_input.setPlaceholderText("Optional")
+    form.addRow("First name", self.first_name_input)
+
+    self.last_name_input = QLineEdit()
+    self.last_name_input.setPlaceholderText("Optional")
+    form.addRow("Last name", self.last_name_input)
+
+    layout.addLayout(form)
+
+    action_row = QHBoxLayout()
+    action_row.addStretch()
+    cancel_button = QPushButton("Cancel")
+    cancel_button.clicked.connect(self.reject)
+    action_row.addWidget(cancel_button)
+    submit_button = QPushButton("Continue")
+    submit_button.clicked.connect(self._submit)
+    action_row.addWidget(submit_button)
+    layout.addLayout(action_row)
+
+  def _submit(self):
+    code = self.code_input.text().strip()
+    if not code:
+      QMessageBox.warning(self, "Missing code", "Please enter the authorization code.")
+      return
+    name_payload = {
+      "given": self.first_name_input.text().strip() or None,
+      "family": self.last_name_input.text().strip() or None,
+    }
+    name_payload = {k: v for k, v in name_payload.items() if v}
+    self._result = {"code": code}
+    if name_payload:
+      self._result["name"] = name_payload
+    self.accept()
+
+  def result_payload(self):
+    return self._result
+
+
+def _build_firestore_client():
+  project_id = os.getenv("FIREBASE_PROJECT_ID")
+  if not project_id:
+    return None
+  try:
+    from google.cloud import firestore
+  except ImportError:
+    return None
+  return firestore.Client(project=project_id)
+
+
+def _ensure_signed_in(parent=None):
+  firebase_client = _build_firestore_client()
+  if not firebase_client:
+    return
+
+  client_id = os.getenv("APPLE_CLIENT_ID")
+  client_secret = os.getenv("APPLE_CLIENT_SECRET")
+  redirect_uri = os.getenv("APPLE_REDIRECT_URI")
+  state = os.getenv("APPLE_AUTH_STATE", "all-in-one-login")
+  if not all([client_id, client_secret, redirect_uri]):
+    QMessageBox.warning(
+      parent,
+      "Missing Apple config",
+      "Set APPLE_CLIENT_ID, APPLE_CLIENT_SECRET, and APPLE_REDIRECT_URI to enable sign-in.",
+    )
+    return
+
+  session_store = FileSessionStore(
+    path=Path(os.path.expanduser("~/.all-in-one/session.json"))
+  )
+
+  def prompt_sign_in(auth_request):
+    dialog = SignInDialog(auth_request, parent=parent)
+    if dialog.exec() != QDialog.Accepted:
+      raise ValueError("Sign in cancelled")
+    return dialog.result_payload()
+
+  try:
+    login.ensure_user_logged_in(
+      firebase_client=firebase_client,
+      session_store=session_store,
+      client_id=client_id,
+      client_secret=client_secret,
+      redirect_uri=redirect_uri,
+      state=state,
+      prompt_sign_in=prompt_sign_in,
+    )
+  except Exception as exc:
+    QMessageBox.critical(parent, "Sign in failed", str(exc))
+
+
 def main():
   app = QApplication(sys.argv)
+  _ensure_signed_in()
   w = MainWindow()
   w.setMinimumSize(1100, 600)
   w.show()
