@@ -1,5 +1,5 @@
 import sys
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
   QApplication,
   QFrame,
@@ -79,10 +79,14 @@ class MainWindow(QMainWindow):
     left_layout.setSpacing(12)
     left_layout.setAlignment(Qt.AlignTop)
 
+    self.left_layout = left_layout
+    self.left_scroll_contents = left_scroll_contents
+
     self.bridge = MessageBridge()
     chats = self._load_chats()
 
     self.chat_rows = []
+    self.chat_list_snapshot = [(chat["id"], chat["name"], chat["preview"], chat["time"]) for chat in chats]
     for chat in chats:
       row = self._build_chat_row(chat)
       self.chat_rows.append(row)
@@ -135,8 +139,15 @@ class MainWindow(QMainWindow):
     self.splitter.setSizes([360, 1000])
 
     layout.addWidget(self.splitter)
+    self.current_chat = None
+    self.current_message_snapshot = []
     if self.chat_rows:
       self._select_chat(chats[0], self.chat_rows[0])
+
+    self.poll_timer = QTimer(self)
+    self.poll_timer.setInterval(5000)
+    self.poll_timer.timeout.connect(self._poll_for_updates)
+    self.poll_timer.start()
 
     self.setStyleSheet(
       """
@@ -256,6 +267,9 @@ class MainWindow(QMainWindow):
     self.name_label.setText(chat["name"])
     for chat_row in self.chat_rows:
       self._set_row_selected(chat_row, chat_row is row)
+    self.current_chat = chat
+    self.current_message_snapshot = []
+    self._render_messages([])
     self._load_messages(chat)
 
   def _set_row_selected(self, row, selected):
@@ -305,27 +319,77 @@ class MainWindow(QMainWindow):
 
     return wrapper
 
+  def _get_message_snapshot(self, rows):
+    return [(date_val, is_from_me, text, handle) for date_val, is_from_me, text, handle, _kind in rows]
+
+  def _build_message_payload(self, rows):
+    messages = []
+    for date_val, is_from_me, text, handle, _kind in reversed(rows):
+      normalized_text = (text or "").strip()
+      if not normalized_text:
+        normalized_text = "Shared an attachment."
+      messages.append(
+        {
+          "text": text or normalized_text,
+          "is_from_me": bool(is_from_me),
+          "handle": handle,
+          "date": date_val,
+        }
+      )
+    return messages
+
   def _load_messages(self, chat):
-    self._clear_layout(self.message_layout)
     messages = []
     if self.bridge and "id" in chat:
       chat_id = int(chat["id"])
-      rows = self.bridge.last_messages_in_chat(chat_id, limit=60) # load messages
-      for date_val, is_from_me, text, handle, kind in reversed(rows):
-        normalized_text = (text or "").strip()
-        if not normalized_text:
-          normalized_text = "Shared an attachment."
-        messages.append(
-          {
-            "text": text or "",
-            "is_from_me": bool(is_from_me),
-            "handle": handle,
-            "date": date_val,
-          }
-        )
+      rows = self.bridge.last_messages_in_chat(chat_id, limit=60)  # load messages
+      self.current_message_snapshot = self._get_message_snapshot(rows)
+      messages = self._build_message_payload(rows)
+    self._render_messages(messages)
+
+  def _render_messages(self, messages):
+    self._clear_layout(self.message_layout)
     for message in messages:
       self.message_layout.addWidget(self._build_message_bubble(message))
     self.message_layout.addStretch()
+
+  def _refresh_chat_list(self):
+    chats = self._load_chats()
+    snapshot = [(chat["id"], chat["name"], chat["preview"], chat["time"]) for chat in chats]
+    if snapshot == self.chat_list_snapshot:
+      return chats
+
+    self.chat_list_snapshot = snapshot
+    self._clear_layout(self.left_layout)
+    self.chat_rows = []
+    for chat in chats:
+      row = self._build_chat_row(chat)
+      self.chat_rows.append(row)
+      self.left_layout.addWidget(row)
+      if self.current_chat and chat["id"] == self.current_chat.get("id"):
+        self._set_row_selected(row, True)
+    return chats
+
+  def _poll_for_updates(self):
+    chats = self._refresh_chat_list()
+    if not self.current_chat:
+      return
+
+    current_chat_id = self.current_chat.get("id")
+    if current_chat_id is None:
+      return
+
+    updated_chat = next((chat for chat in chats if chat["id"] == current_chat_id), None)
+    if updated_chat:
+      self.current_chat = updated_chat
+      self.name_label.setText(updated_chat["name"])
+
+    rows = self.bridge.last_messages_in_chat(int(current_chat_id), limit=60)
+    snapshot = self._get_message_snapshot(rows)
+    if snapshot != self.current_message_snapshot:
+      self.current_message_snapshot = snapshot
+      messages = self._build_message_payload(rows)
+      self._render_messages(messages)
 
   def _load_chats(self):
     bridge = MessageBridge()
