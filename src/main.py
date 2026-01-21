@@ -75,7 +75,7 @@ class MainWindow(QMainWindow):
     left_header_layout.setContentsMargins(12, 12, 12, 8)
     left_header_layout.setSpacing(8)
 
-    self.note_button = QPushButton("✨ Note")
+    self.note_button = QPushButton("✨ Craft with AI")
     self.note_button.setObjectName("sparklyNoteButton")
     self.note_button.setCursor(Qt.PointingHandCursor)
     self.note_button.clicked.connect(self._toggle_note_overlay)
