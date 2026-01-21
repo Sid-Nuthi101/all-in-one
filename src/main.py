@@ -399,7 +399,7 @@ class MainWindow(QMainWindow):
   def _render_messages(self, messages):
     self._clear_layout(self.message_layout)
     for message in messages:
-      self.message_layout.addWidget(self._build_message_bubble(message, avatar_slot_width))
+      self.message_layout.addWidget(self._build_message_bubble(message, 32))
     self.message_layout.addStretch()
     QTimer.singleShot(0, self._scroll_messages_to_bottom)
 
