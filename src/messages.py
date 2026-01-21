@@ -91,10 +91,10 @@ class MessageBridge:
         """
         self.cur.execute("""
             SELECT
-                c.ROWID AS chat_id,
-                c.guid,
-                c.chat_identifier,
-                c.display_name,
+                c.ROWID AS id,
+                c.guid AS guid,
+                c.chat_identifier AS chat_identifier,
+                c.display_name AS name,
                 m.date,
                 m.is_from_me,
                 COALESCE(m.text, '') AS text,
@@ -127,7 +127,7 @@ class MessageBridge:
         chats: List[Dict[str, Any]] = []
         for chat_id, guid, chat_identifier, display_name, date_val, is_from_me, text, handle in rows:
             dt = self.apple_time_to_dt(date_val)
-            name = display_name or ContactsConnector.get_contact_name(handle) or handle or chat_identifier or "Unknown"
+            name = display_name or ContactsConnector.get_contact_name(handle) or handle or "Unknown"
             preview = " ".join((text or "").split()) or "No message"
             time_str = dt.strftime("%I:%M %p").lstrip("0") if dt else ""
             initials = "".join([part[0] for part in name.split()[:2]]).upper() or "?"
