@@ -612,9 +612,13 @@ class MainWindow(QMainWindow):
       avatar.setFixedSize(32, 32)
       avatar_layout.addWidget(avatar, alignment=Qt.AlignLeft | Qt.AlignBottom)
 
-    wrapper_layout.addWidget(avatar_slot)
-    wrapper_layout.addWidget(content)
-    wrapper_layout.addStretch()
+    if message["is_from_me"]:
+      wrapper_layout.addStretch()
+      wrapper_layout.addWidget(content)
+    else:
+      wrapper_layout.addWidget(avatar_slot)
+      wrapper_layout.addWidget(content)
+      wrapper_layout.addStretch()
 
     return wrapper
 
@@ -651,6 +655,10 @@ class MainWindow(QMainWindow):
       )
 
     for index, message in enumerate(messages):
+      if message["is_from_me"]:
+        message["show_sender_name"] = False
+        message["show_avatar"] = False
+        continue
       previous_sender = messages[index - 1]["sender_key"] if index > 0 else None
       next_sender = messages[index + 1]["sender_key"] if index < len(messages) - 1 else None
       message["show_sender_name"] = message["sender_key"] != previous_sender
