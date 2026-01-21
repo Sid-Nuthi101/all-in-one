@@ -1,7 +1,8 @@
 import sys
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QEvent
 from PySide6.QtWidgets import (
   QApplication,
+  QCompleter,
   QFrame,
   QHBoxLayout,
   QLabel,
@@ -108,25 +109,41 @@ class MainWindow(QMainWindow):
     self.note_overlay_layout.setContentsMargins(16, 16, 16, 16)
     self.note_overlay_layout.setSpacing(10)
 
+    overlay_header = QWidget()
+    overlay_header_layout = QHBoxLayout(overlay_header)
+    overlay_header_layout.setContentsMargins(0, 0, 0, 0)
+    overlay_header_layout.setSpacing(8)
+
     overlay_title = QLabel("Sparkly note")
     overlay_title.setObjectName("noteOverlayTitle")
 
+    self.note_overlay_close = QPushButton("✕")
+    self.note_overlay_close.setObjectName("noteOverlayClose")
+    self.note_overlay_close.setCursor(Qt.PointingHandCursor)
+    self.note_overlay_close.clicked.connect(self._hide_note_overlay)
+
+    overlay_header_layout.addWidget(overlay_title)
+    overlay_header_layout.addStretch()
+    overlay_header_layout.addWidget(self.note_overlay_close)
+
     self.note_recipient_dropdown = QComboBox()
     self.note_recipient_dropdown.setObjectName("noteRecipientDropdown")
-    self.note_recipient_dropdown.addItems(
-      [
-        "Send to...",
-        "Alex Morgan",
-        "Design Team",
-        "Family Group",
-      ]
-    )
+    self.note_recipient_dropdown.setEditable(True)
+    self.note_recipient_dropdown.setInsertPolicy(QComboBox.NoInsert)
+    dropdown_line_edit = self.note_recipient_dropdown.lineEdit()
+    dropdown_line_edit.setPlaceholderText("Search chats")
+    completer = self.note_recipient_dropdown.completer()
+    if completer is None:
+      completer = QCompleter(self.note_recipient_dropdown.model(), self.note_recipient_dropdown)
+      self.note_recipient_dropdown.setCompleter(completer)
+    completer.setCaseSensitivity(Qt.CaseInsensitive)
+    completer.setFilterMode(Qt.MatchContains)
 
     self.note_text_input = QLineEdit()
     self.note_text_input.setObjectName("noteTextInput")
     self.note_text_input.setPlaceholderText("What is it you'd like to send?")
 
-    self.note_overlay_layout.addWidget(overlay_title)
+    self.note_overlay_layout.addWidget(overlay_header)
     self.note_overlay_layout.addWidget(self.note_recipient_dropdown)
     self.note_overlay_layout.addWidget(self.note_text_input)
 
@@ -135,6 +152,8 @@ class MainWindow(QMainWindow):
 
     self.chat_rows = []
     self.chat_list_snapshot = [(chat["id"], chat["name"], chat["preview"], chat["time"]) for chat in chats]
+    self.chat_name_snapshot = []
+    self._load_recipient_choices(chats)
     for chat in chats:
       row = self._build_chat_row(chat)
       self.chat_rows.append(row)
@@ -196,6 +215,10 @@ class MainWindow(QMainWindow):
     self.poll_timer.setInterval(5000)
     self.poll_timer.timeout.connect(self._poll_for_updates)
     self.poll_timer.start()
+
+    app = QApplication.instance()
+    if app:
+      app.installEventFilter(self)
 
     self.setStyleSheet(
       """
@@ -293,6 +316,16 @@ class MainWindow(QMainWindow):
         color: #ffffff;
         font-weight: 600;
       }
+      QPushButton#noteOverlayClose {
+        background-color: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 14px;
+        padding: 2px 4px;
+      }
+      QPushButton#noteOverlayClose:hover {
+        color: #ffffff;
+      }
       QComboBox#noteRecipientDropdown,
       QLineEdit#noteTextInput {
         background-color: rgba(255, 255, 255, 0.1);
@@ -317,6 +350,22 @@ class MainWindow(QMainWindow):
     super().resizeEvent(event)
     self._position_note_overlay()
 
+  def eventFilter(self, obj, event):
+    if event.type() == QEvent.MouseButtonPress and self.note_overlay.isVisible():
+      clicked_widget = QApplication.widgetAt(event.globalPosition().toPoint())
+      if clicked_widget and self._is_overlay_related(clicked_widget):
+        return super().eventFilter(obj, event)
+      self._hide_note_overlay()
+    return super().eventFilter(obj, event)
+
+  def _is_overlay_related(self, widget):
+    current = widget
+    while current:
+      if current in (self.note_overlay, self.note_button):
+        return True
+      current = current.parentWidget()
+    return False
+
   def _position_note_overlay(self):
     if not self.note_overlay:
       return
@@ -332,6 +381,28 @@ class MainWindow(QMainWindow):
     if not is_visible:
       self.note_overlay.raise_()
       self._position_note_overlay()
+
+  def _hide_note_overlay(self):
+    if self.note_overlay.isVisible():
+      self.note_overlay.setVisible(False)
+
+  def _load_recipient_choices(self, chats):
+    chat_names = []
+    for chat in chats:
+      name = chat.get("name")
+      if name and name not in chat_names:
+        chat_names.append(name)
+    if chat_names == self.chat_name_snapshot:
+      return
+    self.chat_name_snapshot = chat_names
+    current_text = self.note_recipient_dropdown.currentText()
+    self.note_recipient_dropdown.blockSignals(True)
+    self.note_recipient_dropdown.clear()
+    self.note_recipient_dropdown.addItems(chat_names)
+    self.note_recipient_dropdown.setCurrentIndex(-1)
+    self.note_recipient_dropdown.blockSignals(False)
+    if current_text:
+      self.note_recipient_dropdown.setEditText(current_text)
 
   def on_run(self):
     self.output.append(get_status())
@@ -518,9 +589,11 @@ class MainWindow(QMainWindow):
     chats = self._load_chats()
     snapshot = [(chat["id"], chat["name"], chat["preview"], chat["time"]) for chat in chats]
     if snapshot == self.chat_list_snapshot:
+      self._load_recipient_choices(chats)
       return chats
 
     self.chat_list_snapshot = snapshot
+    self._load_recipient_choices(chats)
     self._clear_layout(self.left_layout)
     self.chat_rows = []
     for chat in chats:
