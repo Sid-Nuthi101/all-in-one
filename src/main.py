@@ -101,8 +101,16 @@ class LoginDialog(QDialog):
     label.setWordWrap(True)
     layout.addWidget(label)
 
+    helper = QLabel(
+      "Paste the authorization code from the Apple sign-in redirect. "
+      "Requires APPLE_CLIENT_ID, APPLE_CLIENT_SECRET, APPLE_REDIRECT_URI, "
+      "and FIREBASE_PROJECT_ID."
+    )
+    helper.setWordWrap(True)
+    layout.addWidget(helper)
+
     self.input = QLineEdit()
-    self.input.setPlaceholderText("Paste Apple authorization code")
+    self.input.setPlaceholderText("Authorization code from Apple")
     layout.addWidget(self.input)
 
     self.error = QLabel("")
@@ -467,7 +475,9 @@ def _login_with_apple(code: str) -> str:
   redirect_uri = os.environ.get("APPLE_REDIRECT_URI")
   project_id = os.environ.get("FIREBASE_PROJECT_ID")
   if not client_id or not client_secret or not redirect_uri or not project_id:
-    raise ValueError("Missing Apple or Firebase configuration environment variables.")
+    raise ValueError(
+      "Missing APPLE_CLIENT_ID, APPLE_CLIENT_SECRET, APPLE_REDIRECT_URI, or FIREBASE_PROJECT_ID."
+    )
 
   try:
     from google.cloud import firestore
