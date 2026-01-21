@@ -133,6 +133,7 @@ def login_with_apple(
     now_fn: Optional[Callable[[], Any]] = None,
     token_exchange: Optional[Callable[..., Dict[str, Any]]] = None,
     jwt_decoder: Optional[Callable[..., Dict[str, Any]]] = None,
+    on_first_login: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, Any]:
     exchange_fn = token_exchange or exchange_code_for_tokens
     token_response = exchange_fn(
@@ -150,4 +151,9 @@ def login_with_apple(
         id_token, audience=client_id, jwt_decoder=jwt_decoder
     )
     apple_user = normalize_apple_user(claims, name=name)
-    return firebase.upsert_user(firebase_client, apple_user, now_fn=now_fn)
+    return firebase.upsert_user(
+        firebase_client,
+        apple_user,
+        now_fn=now_fn,
+        on_first_login=on_first_login,
+    )

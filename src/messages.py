@@ -142,6 +142,7 @@ class MessageBridge:
         subprocess.run(["osascript", "-e", script])
     
     MessageRow = Tuple[int, int, str, Optional[str], str, List[Dict[str, Any]]]
+    UserSentMessageRow = Tuple[int, int, str, Optional[str], int]
 
     def _text_from_attributed_body(self, blob: Optional[bytes]) -> str:
         """
@@ -291,6 +292,55 @@ class MessageBridge:
                 kind,
             ))
 
+        return out
+
+    def last_messages_sent_by_user(self, limit: int = 5000) -> List[UserSentMessageRow]:
+        """
+        Returns the most recent messages sent by the user (is_from_me = 1).
+
+        Each row:
+        (message_rowid, date, text, chat_id, recipient_count)
+        """
+        self.cur.execute(
+            """
+            SELECT
+                m.ROWID AS message_rowid,
+                m.date,
+                m.text,
+                m.attributedBody,
+                MIN(cmj.chat_id) AS chat_id,
+                COUNT(cmj.chat_id) AS recipient_count
+            FROM message m
+            LEFT JOIN chat_message_join cmj ON cmj.message_id = m.ROWID
+            WHERE m.is_from_me = 1
+            GROUP BY m.ROWID
+            ORDER BY m.date DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        rows = self.cur.fetchall()
+        out: List[MessageBridge.UserSentMessageRow] = []
+        for (
+            message_rowid,
+            date,
+            text,
+            attributed_body,
+            chat_id,
+            recipient_count,
+        ) in rows:
+            raw_text = (text or "")
+            if not raw_text.strip() and attributed_body:
+                raw_text = self._text_from_attributed_body(attributed_body)
+            out.append(
+                (
+                    int(message_rowid),
+                    int(date),
+                    raw_text or "",
+                    str(chat_id) if chat_id is not None else None,
+                    int(recipient_count or 0),
+                )
+            )
         return out
 
     def last_100_messages_in_chat(self, chat_rowid: int) -> List[Tuple[int, int, str, Optional[str]]]:

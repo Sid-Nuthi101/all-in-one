@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 import firebase
+from agent_train import ModelMetadata, UserModelState
 
 
 def test_upsert_user_sets_created_at_on_first_login(
@@ -67,3 +68,60 @@ def test_upsert_user_does_not_overwrite_optional_fields(
     assert result["name"] == {"given": "Existing"}
 
     doc_ref.delete()
+
+
+def test_firestore_metadata_store_roundtrip(
+    firestore_client, test_apple_sub
+):
+    store = firebase.FirestoreMetadataStore(firestore_client)
+    state_ref = firestore_client.collection(
+        firebase.USER_MODEL_STATE_COLLECTION
+    ).document(test_apple_sub)
+    state_ref.delete()
+
+    metadata_query = firestore_client.collection(
+        firebase.USER_MODEL_METADATA_COLLECTION
+    ).where("user_id", "==", test_apple_sub)
+    for doc in metadata_query.stream():
+        doc.reference.delete()
+
+    created_at = datetime(2024, 3, 1, 9, 0, 0, tzinfo=timezone.utc)
+    metadata = ModelMetadata(
+        user_id=test_apple_sub,
+        version=1,
+        base_model="gpt-4o-mini",
+        status="succeeded",
+        created_at=created_at,
+        completed_at=created_at,
+        openai_training_file_id="file-123",
+        openai_job_id="job-123",
+        openai_fine_tuned_model_id="ft-abc",
+        training_data_range=(created_at, created_at),
+        num_messages=5000,
+        token_estimate=20000,
+        dataset_hash="hash-123",
+    )
+    store.create_model_metadata(metadata)
+
+    state = UserModelState(
+        user_id=test_apple_sub,
+        active_model_id="ft-abc",
+        active_model_version=1,
+        model_status="ready",
+        model_updated_at=created_at,
+    )
+    store.set_user_state(state)
+
+    fetched_state = store.get_user_state(test_apple_sub)
+    assert fetched_state.active_model_id == "ft-abc"
+    assert fetched_state.active_model_version == 1
+    assert fetched_state.model_status == "ready"
+
+    fetched_metadata = store.get_latest_model_metadata(test_apple_sub)
+    assert fetched_metadata is not None
+    assert fetched_metadata.openai_fine_tuned_model_id == "ft-abc"
+    assert fetched_metadata.training_data_range == (created_at, created_at)
+
+    state_ref.delete()
+    for doc in metadata_query.stream():
+        doc.reference.delete()
