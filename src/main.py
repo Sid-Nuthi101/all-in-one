@@ -19,8 +19,12 @@ from PySide6.QtWidgets import (
   QSizePolicy,
 )
 
+import os
+
 from messages import MessageBridge
 from logic import get_status
+import auth
+import login
 import session
 
 
@@ -82,23 +86,29 @@ class TrainingWorker(QThread):
 
 
 class LoginDialog(QDialog):
-  def __init__(self, parent=None):
+  def __init__(self, on_login: Callable[[str], str], parent=None):
     super().__init__(parent)
     self.setWindowTitle("Login Required")
     self.setModal(True)
     self.setFixedWidth(360)
+    self._on_login = on_login
 
     layout = QVBoxLayout(self)
     layout.setContentsMargins(20, 20, 20, 20)
     layout.setSpacing(12)
 
-    label = QLabel("Enter your user ID to continue.")
+    label = QLabel("Sign in with Apple to continue.")
     label.setWordWrap(True)
     layout.addWidget(label)
 
     self.input = QLineEdit()
-    self.input.setPlaceholderText("User ID")
+    self.input.setPlaceholderText("Paste Apple authorization code")
     layout.addWidget(self.input)
+
+    self.error = QLabel("")
+    self.error.setWordWrap(True)
+    self.error.setStyleSheet("color: #cc0000;")
+    layout.addWidget(self.error)
 
     button_row = QHBoxLayout()
     button_row.addStretch()
@@ -112,8 +122,16 @@ class LoginDialog(QDialog):
     ok_btn.clicked.connect(self._accept_if_valid)
 
   def _accept_if_valid(self):
-    if self.input.text().strip():
-      self.accept()
+    code = self.input.text().strip()
+    if not code:
+      return
+    try:
+      user_id = self._on_login(code)
+    except Exception as exc:
+      self.error.setText(str(exc))
+      return
+    self.input.setText(user_id)
+    self.accept()
 
   def user_id(self) -> str:
     return self.input.text().strip()
@@ -443,11 +461,44 @@ class MainWindow(QMainWindow):
     worker.start()
 
 
+def _login_with_apple(code: str) -> str:
+  client_id = os.environ.get("APPLE_CLIENT_ID")
+  client_secret = os.environ.get("APPLE_CLIENT_SECRET")
+  redirect_uri = os.environ.get("APPLE_REDIRECT_URI")
+  project_id = os.environ.get("FIREBASE_PROJECT_ID")
+  if not client_id or not client_secret or not redirect_uri or not project_id:
+    raise ValueError("Missing Apple or Firebase configuration environment variables.")
+
+  try:
+    from google.cloud import firestore
+  except Exception as exc:  # pragma: no cover - dependency optional in tests
+    raise ValueError("google-cloud-firestore is required for Apple login.") from exc
+
+  firestore_client = firestore.Client(project=project_id)
+  result = login.login_with_apple(
+    code=code,
+    client_id=client_id,
+    client_secret=client_secret,
+    redirect_uri=redirect_uri,
+    firebase_client=firestore_client,
+    token_exchange=lambda **kwargs: auth.exchange_code_for_tokens(
+      token_url=login.APPLE_TOKEN_URL,
+      code=kwargs["code"],
+      client_id=kwargs["client_id"],
+      client_secret=kwargs["client_secret"],
+      redirect_uri=kwargs["redirect_uri"],
+      code_verifier=kwargs.get("code_verifier"),
+    ),
+    jwt_decoder=auth.decode_jwt_without_verification,
+  )
+  return result["apple_sub"]
+
+
 def main():
   app = QApplication(sys.argv)
   user_id = session.load_user_id()
   if not user_id:
-    dialog = LoginDialog()
+    dialog = LoginDialog(_login_with_apple)
     if dialog.exec() != QDialog.Accepted:
       sys.exit(0)
     user_id = dialog.user_id()
