@@ -299,7 +299,7 @@ class MainWindow(QMainWindow):
       if spacer is not None:
         del spacer
 
-  def _build_message_bubble(self, message):
+  def _build_message_bubble(self, message, avatar_slot_width):
     wrapper = QWidget()
     wrapper_layout = QHBoxLayout(wrapper)
     wrapper_layout.setContentsMargins(0, 0, 0, 0)
@@ -345,6 +345,10 @@ class MainWindow(QMainWindow):
     else:
       if avatar:
         wrapper_layout.addWidget(avatar)
+      else:
+        spacer = QWidget()
+        spacer.setFixedSize(avatar_slot_width, avatar_slot_width)
+        wrapper_layout.addWidget(spacer)
       wrapper_layout.addWidget(content)
       wrapper_layout.addStretch()
 
@@ -400,8 +404,9 @@ class MainWindow(QMainWindow):
             "avatar_initials": avatar_initials,
           }
         )
+    avatar_slot_width = 32
     for message in messages:
-      self.message_layout.addWidget(self._build_message_bubble(message))
+      self.message_layout.addWidget(self._build_message_bubble(message, avatar_slot_width))
     self.message_layout.addStretch()
     QTimer.singleShot(0, self._scroll_messages_to_bottom)
 
