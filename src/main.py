@@ -143,9 +143,14 @@ class MainWindow(QMainWindow):
     self.note_text_input.setObjectName("noteTextInput")
     self.note_text_input.setPlaceholderText("What is it you'd like to send?")
 
+    self.note_generate_button = QPushButton("Generate")
+    self.note_generate_button.setObjectName("noteGenerateButton")
+    self.note_generate_button.setCursor(Qt.PointingHandCursor)
+
     self.note_overlay_layout.addWidget(overlay_header)
     self.note_overlay_layout.addWidget(self.note_recipient_dropdown)
     self.note_overlay_layout.addWidget(self.note_text_input)
+    self.note_overlay_layout.addWidget(self.note_generate_button)
 
     self.bridge = MessageBridge()
     chats = self._load_chats()
@@ -305,6 +310,17 @@ class MainWindow(QMainWindow):
         font-weight: 600;
       }
       QPushButton#sparklyNoteButton:hover {
+        background-color: rgba(139, 92, 246, 0.4);
+      }
+      QPushButton#noteGenerateButton {
+        background-color: rgba(139, 92, 246, 0.25);
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        color: #ffffff;
+        border-radius: 12px;
+        padding: 6px 12px;
+        font-weight: 600;
+      }
+      QPushButton#noteGenerateButton:hover {
         background-color: rgba(139, 92, 246, 0.4);
       }
       QFrame#noteOverlay {
