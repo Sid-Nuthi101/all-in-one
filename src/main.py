@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
   QHBoxLayout,
   QDialog,
   QLabel,
+  QLineEdit,
   QProgressBar,
   QPushButton,
   QScrollArea,
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from messages import MessageBridge
 from logic import get_status
+import session
 
 
 class ElidedLabel(QLabel):
@@ -79,11 +81,54 @@ class TrainingWorker(QThread):
       self.failed.emit(exc)
 
 
+class LoginDialog(QDialog):
+  def __init__(self, parent=None):
+    super().__init__(parent)
+    self.setWindowTitle("Login Required")
+    self.setModal(True)
+    self.setFixedWidth(360)
+
+    layout = QVBoxLayout(self)
+    layout.setContentsMargins(20, 20, 20, 20)
+    layout.setSpacing(12)
+
+    label = QLabel("Enter your user ID to continue.")
+    label.setWordWrap(True)
+    layout.addWidget(label)
+
+    self.input = QLineEdit()
+    self.input.setPlaceholderText("User ID")
+    layout.addWidget(self.input)
+
+    button_row = QHBoxLayout()
+    button_row.addStretch()
+    cancel_btn = QPushButton("Cancel")
+    ok_btn = QPushButton("Continue")
+    button_row.addWidget(cancel_btn)
+    button_row.addWidget(ok_btn)
+    layout.addLayout(button_row)
+
+    cancel_btn.clicked.connect(self.reject)
+    ok_btn.clicked.connect(self._accept_if_valid)
+
+  def _accept_if_valid(self):
+    if self.input.text().strip():
+      self.accept()
+
+  def user_id(self) -> str:
+    return self.input.text().strip()
+
+
 class MainWindow(QMainWindow):
-  def __init__(self, training_fn: Optional[Callable[[], object]] = None):
+  def __init__(
+    self,
+    user_id: str,
+    training_fn: Optional[Callable[[], object]] = None,
+  ):
     super().__init__()
     self._training_dialog: Optional[TrainingDialog] = None
     self._training_worker: Optional[TrainingWorker] = None
+    self._user_id = user_id
 
     self.setWindowTitle("")
     self.setWindowFlags(Qt.WindowMinMaxButtonsHint)
@@ -400,7 +445,15 @@ class MainWindow(QMainWindow):
 
 def main():
   app = QApplication(sys.argv)
-  w = MainWindow()
+  user_id = session.load_user_id()
+  if not user_id:
+    dialog = LoginDialog()
+    if dialog.exec() != QDialog.Accepted:
+      sys.exit(0)
+    user_id = dialog.user_id()
+    session.save_user_id(user_id)
+
+  w = MainWindow(user_id=user_id)
   w.setMinimumSize(1100, 600)
   w.show()
   sys.exit(app.exec())
