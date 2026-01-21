@@ -3,13 +3,25 @@ from __future__ import annotations
 import base64
 import hashlib
 import os
-from typing import Any, Callable, Dict, Optional, Sequence
+from typing import Any, Callable, Dict, Optional, Sequence, TypedDict, Protocol
 from urllib.parse import urlencode
 
 import firebase
 
 APPLE_AUTH_URL = "https://appleid.apple.com/auth/authorize"
 APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token"
+
+
+class SessionStore(Protocol):
+    def get(self) -> Optional[Dict[str, Any]]: ...
+
+    def set(self, session: Dict[str, Any]) -> None: ...
+
+
+class AppleAuthRequest(TypedDict):
+    authorization_url: str
+    code_verifier: str
+    state: str
 
 
 def generate_pkce_pair(length: int = 64) -> Dict[str, str]:
@@ -44,6 +56,29 @@ def build_authorization_url(
         }
     )
     return f"{APPLE_AUTH_URL}?{query}"
+
+
+def create_apple_auth_request(
+    *,
+    client_id: str,
+    redirect_uri: str,
+    state: str,
+    scope: Sequence[str] = ("name", "email"),
+    pkce_pair: Optional[Dict[str, str]] = None,
+) -> AppleAuthRequest:
+    pkce = pkce_pair or generate_pkce_pair()
+    authorization_url = build_authorization_url(
+        client_id=client_id,
+        redirect_uri=redirect_uri,
+        state=state,
+        code_challenge=pkce["code_challenge"],
+        scope=scope,
+    )
+    return {
+        "authorization_url": authorization_url,
+        "code_verifier": pkce["code_verifier"],
+        "state": state,
+    }
 
 
 def exchange_code_for_tokens(
@@ -151,3 +186,50 @@ def login_with_apple(
     )
     apple_user = normalize_apple_user(claims, name=name)
     return firebase.upsert_user(firebase_client, apple_user, now_fn=now_fn)
+
+
+def ensure_user_logged_in(
+    *,
+    firebase_client: Any,
+    session_store: SessionStore,
+    client_id: str,
+    client_secret: str,
+    redirect_uri: str,
+    state: str,
+    prompt_sign_in: Callable[[AppleAuthRequest], Dict[str, Any]],
+    scope: Sequence[str] = ("name", "email"),
+    now_fn: Optional[Callable[[], Any]] = None,
+    token_exchange: Optional[Callable[..., Dict[str, Any]]] = None,
+    jwt_decoder: Optional[Callable[..., Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    session = session_store.get() or {}
+    apple_sub = session.get("apple_sub")
+    if apple_sub:
+        return firebase.upsert_user(
+            firebase_client, {"apple_sub": apple_sub}, now_fn=now_fn
+        )
+
+    auth_request = create_apple_auth_request(
+        client_id=client_id,
+        redirect_uri=redirect_uri,
+        state=state,
+        scope=scope,
+    )
+    prompt_result = prompt_sign_in(auth_request)
+    if "code" not in prompt_result:
+        raise ValueError("prompt_sign_in must return an authorization code")
+
+    user = login_with_apple(
+        code=prompt_result["code"],
+        client_id=client_id,
+        client_secret=client_secret,
+        redirect_uri=redirect_uri,
+        firebase_client=firebase_client,
+        name=prompt_result.get("name"),
+        code_verifier=auth_request["code_verifier"],
+        now_fn=now_fn,
+        token_exchange=token_exchange,
+        jwt_decoder=jwt_decoder,
+    )
+    session_store.set({"apple_sub": user["apple_sub"]})
+    return user
