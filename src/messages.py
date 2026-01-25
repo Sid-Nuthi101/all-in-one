@@ -44,6 +44,10 @@ class MessageBridge:
         ts = (t / 1_000_000_000) + APPLE_EPOCH
         return datetime.fromtimestamp(ts)
 
+    @staticmethod
+    def _escape_applescript_string(value: str) -> str:
+        return value.replace("\\", "\\\\").replace('"', '\\"')
+
     def last_100_messages(self):
         # 1) Fetch messages
         self.cur.execute("""
@@ -81,15 +85,16 @@ class MessageBridge:
             )
             print(f"[{dt}] {sender}: {text}")
 
-    def top_chats(self, limit: int = 50) -> List[Dict[str, Optional[str]]]:
+    def top_chats(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
         Returns a list of the most recent chats with display-friendly metadata.
         """
         self.cur.execute("""
             SELECT
-                c.ROWID AS chat_id,
-                c.display_name,
-                c.chat_identifier,
+                c.ROWID AS id,
+                c.guid AS guid,
+                c.chat_identifier AS chat_identifier,
+                c.display_name AS name,
                 m.date,
                 m.is_from_me,
                 COALESCE(m.text, '') AS text,
@@ -111,7 +116,7 @@ class MessageBridge:
 
         chat_ids = [row[0] for row in rows]
         participant_handles: Dict[int, List[str]] = {}
-        all_handles: List[str] = [row[6] for row in rows if row[4] == 0 and row[6]]
+        all_handles: List[str] = [row[7] for row in rows if row[5] == 0 and row[7]]
         for chat_id in chat_ids:
             handles = self._chat_participants(chat_id)
             participant_handles[chat_id] = handles
@@ -119,16 +124,17 @@ class MessageBridge:
 
         ContactsConnector.build_index_for_handles(all_handles)
 
-        chats: List[Dict[str, Optional[str]]] = []
-        for chat_id, display_name, chat_identifier, date_val, is_from_me, text, handle in rows:
+        chats: List[Dict[str, Any]] = []
+        for chat_id, guid, chat_identifier, display_name, date_val, is_from_me, text, handle in rows:
             dt = self.apple_time_to_dt(date_val)
-            name = display_name or ContactsConnector.get_contact_name(handle) or handle or chat_identifier or "Unknown"
+            name = display_name or ContactsConnector.get_contact_name(handle) or handle or "Unknown"
             preview = " ".join((text or "").split()) or "No message"
             time_str = dt.strftime("%I:%M %p").lstrip("0") if dt else ""
             initials = "".join([part[0] for part in name.split()[:2]]).upper() or "?"
             seen_participants = set()
             participant_names = []
-            for h in participant_handles.get(chat_id, []):
+            handle_list = participant_handles.get(chat_id, [])
+            for h in handle_list:
                 if not h:
                     continue
                 name_val = ContactsConnector.get_contact_name(h) or h or "Unknown"
@@ -139,12 +145,15 @@ class MessageBridge:
             chats.append(
                 {
                     "id": str(chat_id),
+                    "guid": guid,
                     "name": name,
                     "time": time_str,
                     "preview": preview,
                     "initials": initials,
                     "is_from_me": "1" if is_from_me else "0",
                     "participants": participant_names,
+                    "chat_identifier": chat_identifier,
+                    "participant_handles": handle_list,
                 }
             )
 
@@ -161,12 +170,38 @@ class MessageBridge:
     
     # Sends a Imessage message 
     def send_imessage(self, phone_or_email, text):
+        escaped_text = self._escape_applescript_string(text)
+        escaped_recipient = self._escape_applescript_string(phone_or_email)
         script = f'''
         tell application "Messages"
-            send "{text}" to buddy "{phone_or_email}" of (service 1 whose service type is iMessage)
+            send "{escaped_text}" to buddy "{escaped_recipient}" of (service 1 whose service type is iMessage)
         end tell
         '''
         subprocess.run(["osascript", "-e", script])
+
+    def send_imessage_to_chat(self, chat_identifier: str, text: str) -> None:
+        escaped_text = self._escape_applescript_string(text)
+        escaped_chat = self._escape_applescript_string(chat_identifier)
+        script = f'''
+        tell application "Messages"
+            set targetChat to first chat whose id is "{escaped_chat}"
+            send "{escaped_text}" to targetChat
+        end tell
+        '''
+        subprocess.run(["osascript", "-e", script], check=True)
+
+    def send_message_to_chat(self, chat: Dict[str, Any], text: str) -> None:
+        participants = chat.get("participant_handles") or []
+        if len(participants) == 1:
+            self.send_imessage(str(participants[0]), text)
+            return
+
+        chat_identifier = chat.get("chat_identifier")
+        print("sending to chat_identifier:", chat_identifier)
+        if not chat_identifier:
+            raise ValueError("Missing chat_identifier (expected chat.chat_identifier from DB)")
+
+        self.send_imessage_to_chat(str(chat_identifier), text)
     
     MessageRow = Tuple[int, int, str, Optional[str], str, List[Dict[str, Any]]]
 

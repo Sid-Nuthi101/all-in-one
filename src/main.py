@@ -214,6 +214,8 @@ class MainWindow(QMainWindow):
     self.message_input = QLineEdit()
     self.message_input.setObjectName("messageInput")
     self.message_input.setPlaceholderText("Send a message")
+    self.message_input.returnPressed.connect(self._send_current_message)
+    self.message_input.textChanged.connect(self._update_send_button_state)
 
     self.parse_toggle = QPushButton("✨ Parse with AI")
     self.parse_toggle.setObjectName("parseToggle")
@@ -221,6 +223,7 @@ class MainWindow(QMainWindow):
 
     self.send_button = QPushButton("Send")
     self.send_button.setObjectName("sendButton")
+    self.send_button.clicked.connect(self._send_current_message)
 
     composer_layout.addWidget(self.message_input, 1)
     composer_layout.addWidget(self.parse_toggle)
@@ -239,6 +242,7 @@ class MainWindow(QMainWindow):
     self.current_message_snapshot = []
     if self.chat_rows:
       self._select_chat(chats[0], self.chat_rows[0])
+    self._update_send_button_state()
 
     self.poll_timer = QTimer(self)
     self.poll_timer.setInterval(5000)
@@ -548,12 +552,27 @@ class MainWindow(QMainWindow):
       self._set_row_selected(chat_row, chat_row is row)
     self.current_chat = chat
     self._load_messages(chat)
+    self._update_send_button_state()
 
   def _set_row_selected(self, row, selected):
     row.setProperty("selected", selected)
     row.style().unpolish(row)
     row.style().polish(row)
     row.update()
+
+  def _update_send_button_state(self):
+    has_text = bool(self.message_input.text().strip())
+    can_send = self.current_chat is not None and has_text
+    self.send_button.setEnabled(can_send)
+
+  def _send_current_message(self):
+    text = self.message_input.text().strip()
+    if not text or not self.current_chat or not self.bridge:
+      return
+    self.bridge.send_message_to_chat(self.current_chat, text)
+    self.message_input.clear()
+    self._update_send_button_state()
+    self._load_messages(self.current_chat)
 
   def _clear_layout(self, layout):
     while layout.count():
